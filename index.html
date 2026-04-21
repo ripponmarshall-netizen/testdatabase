@@ -8,42 +8,6 @@
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<style>
-  body { margin:0; font-family: system-ui; background:#f6f7f9; }
-  .app { display:flex; height:100vh; }
-  .sidebar {
-    width:240px; background:#fff; border-right:1px solid #ddd;
-    padding:16px; display:flex; flex-direction:column;
-  }
-  .nav-btn {
-    padding:10px; margin-bottom:6px; border:none; background:none;
-    text-align:left; cursor:pointer; border-radius:6px;
-  }
-  .nav-btn:hover { background:#f0f0f0; }
-  .main { flex:1; display:flex; flex-direction:column; }
-  .topbar {
-    background:#fff; border-bottom:1px solid #ddd;
-    padding:12px 16px; display:flex; justify-content:space-between;
-  }
-  .content { padding:16px; overflow:auto; }
-  .card {
-    background:#fff; padding:16px; border-radius:8px;
-    border:1px solid #e0e0e0;
-  }
-  .grid { display:grid; gap:16px; }
-  .grid-2 { grid-template-columns: repeat(2,1fr); }
-  input, select {
-    padding:8px; border:1px solid #ccc; border-radius:6px;
-    margin-top:6px; width:100%;
-  }
-  button {
-    padding:8px 12px; border:none; border-radius:6px;
-    background:#222; color:#fff; cursor:pointer;
-  }
-  table { width:100%; border-collapse: collapse; }
-  th, td { padding:8px; border-bottom:1px solid #eee; }
-</style>
 </head>
 
 <body>
@@ -51,285 +15,204 @@
 
 <script type="text/babel">
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
-/* ================= MOCK DATA ================= */
+/* ================= RESPONSIVE ================= */
+function useWindowWidth(){
+  const [w,setW]=useState(window.innerWidth);
+  useEffect(()=>{
+    const h=()=>setW(window.innerWidth);
+    window.addEventListener("resize",h);
+    return()=>window.removeEventListener("resize",h);
+  },[]);
+  return w;
+}
 
-const members = [
-  {id:1,name:"Andre Williams",rank:"Firefighter",station:"Half Way Tree",status:"Active",case:false,notes:["Consistent payments"]},
-  {id:2,name:"Ricardo Brown",rank:"Sub Officer",station:"Spanish Town",status:"Arrears",case:true,notes:["Late contributions"]},
-  {id:3,name:"Dwayne Clarke",rank:"Firefighter",station:"Port Antonio",status:"Active",case:false,notes:[]},
-  {id:4,name:"Jason Reid",rank:"Corporal",station:"Montego Bay",status:"Overdue",case:true,notes:["Missed 2 months"]},
-  {id:5,name:"Mark Thomas",rank:"Firefighter",station:"Mandeville",status:"Partial",case:false,notes:[]},
+/* ================= MOCK ================= */
+const MEMBERS = [
+{id:"M001",name:"Rippon Marshall",rank:"Lance Corporal",status:"active"},
+{id:"M002",name:"Devon Campbell",rank:"Station Officer",status:"active"},
+{id:"M003",name:"Andre Williams",rank:"Firefighter",status:"suspended"}
 ];
 
-const users = [
-  {email:"admin@jfb.com",role:"EXEC"},
-  {email:"andre@jfb.com",role:"MEMBER",member_id:1},
+const USER_ACCOUNTS = [
+{id:"U1",member_id:"M001",email:"r.marshall@jfb.gov.jm",role:"member",password:"member123"},
+{id:"U2",member_id:"M002",email:"d.campbell@jfb.gov.jm",role:"exec",password:"exec123"},
 ];
 
-const contributions = [
-  {member_id:1,period:"Jan 2026",status:"Paid"},
-  {member_id:2,period:"Jan 2026",status:"Overdue"},
-  {member_id:2,period:"Feb 2026",status:"Partial"},
+const SEED_NOTES = [
+{id:"N1",member_id:"M003",author_id:"U2",category:"disciplinary",title:"Suspension Case",body:"Violation of protocol",is_confidential:true,created_at:"2025-04-01"}
 ];
 
-/* ================= APP ================= */
+/* ================= STYLES ================= */
+const T={
+bg:"#f7f6f4", surface:"#fff", border:"#e4e2de",
+text:"#1a1917", muted:"#6b6860", accent:"#1d4ed8",
+sidebar:"#141412", sidebarText:"#d6d4d0"
+};
 
+/* ================= COMPONENTS ================= */
+function Btn({children,onClick}){
+  return <button onClick={onClick} style={{padding:"6px 12px",cursor:"pointer"}}>{children}</button>;
+}
+
+function Card({children}){
+  return <div style={{background:"#fff",padding:16,border:"1px solid #ddd",marginBottom:10}}>{children}</div>;
+}
+
+/* ================= LOGIN ================= */
+function Login({onLogin}){
+  const [email,setEmail]=useState("");
+  const [pw,setPw]=useState("");
+
+  return(
+    <div style={{padding:40}}>
+      <h2>Login</h2>
+      <input placeholder="email" onChange={e=>setEmail(e.target.value)} /><br/><br/>
+      <input placeholder="password" type="password" onChange={e=>setPw(e.target.value)} /><br/><br/>
+      <Btn onClick={()=>{
+        const u=USER_ACCOUNTS.find(x=>x.email===email && x.password===pw);
+        if(u) onLogin(u);
+        else alert("invalid");
+      }}>Login</Btn>
+    </div>
+  );
+}
+
+/* ================= SIDEBAR ================= */
+function Sidebar({collapsed,toggle,isMobile,mobileOpen,onClose,page,setPage}){
+  const width = collapsed ? 70 : 220;
+
+  return(
+    <>
+    {isMobile && mobileOpen && (
+      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)"}}/>
+    )}
+
+    <div style={{
+      position:"fixed",
+      left:0,top:0,bottom:0,
+      width,
+      background:T.sidebar,
+      color:"#fff",
+      transform:isMobile ? (mobileOpen?"translateX(0)":"translateX(-100%)"):"none",
+      transition:"0.2s"
+    }}>
+      <div style={{padding:10}}>
+        <Btn onClick={toggle}>{collapsed?"➡":"⬅"}</Btn>
+      </div>
+
+      {["dashboard","members"].map(k=>(
+        <div key={k}
+          onClick={()=>{setPage(k); if(isMobile)onClose();}}
+          style={{padding:10,cursor:"pointer",color:T.sidebarText}}>
+          {!collapsed && k}
+        </div>
+      ))}
+    </div>
+    </>
+  );
+}
+
+/* ================= NOTES PANEL ================= */
+function NotesPanel({memberId,currentUser,notes,setNotes}){
+  const [text,setText]=useState("");
+
+  const filtered = notes.filter(n=>{
+    if(n.member_id!==memberId) return false;
+    if(currentUser.role==="exec") return true;
+    return !n.is_confidential;
+  });
+
+  return(
+    <Card>
+      <h3>Notes</h3>
+
+      {currentUser.role!=="exec" && (
+        <p style={{fontSize:12,color:"#888"}}>
+          Some executive notes are restricted.
+        </p>
+      )}
+
+      {filtered.map(n=>(
+        <div key={n.id} style={{marginBottom:8}}>
+          <b>{n.title}</b>
+          <p>{n.body}</p>
+        </div>
+      ))}
+
+      {currentUser.role==="exec" && (
+        <>
+          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Add note"/>
+          <Btn onClick={()=>{
+            setNotes([...notes,{
+              id:Date.now(),
+              member_id:memberId,
+              title:"New Note",
+              body:text,
+              is_confidential:false
+            }]);
+            setText("");
+          }}>Add</Btn>
+        </>
+      )}
+    </Card>
+  );
+}
+
+/* ================= MAIN ================= */
 function App(){
-  const [user,setUser] = useState(null);
-  const [view,setView] = useState("dashboard");
-  const [selectedMember,setSelectedMember] = useState(null);
+  const [user,setUser]=useState(null);
+  const [page,setPage]=useState("dashboard");
+  const [collapsed,setCollapsed]=useState(false);
+  const [mobileOpen,setMobileOpen]=useState(false);
+  const [notes,setNotes]=useState(SEED_NOTES);
 
-  if(!user){
-    return <Login onLogin={setUser} />;
-  }
+  const width = useWindowWidth();
+  const isMobile = width < 768;
 
-  return (
-    <div className="app">
-      <Sidebar user={user} setView={setView}/>
-      <div className="main">
-        <Topbar user={user} logout={()=>setUser(null)}/>
-        <div className="content">
-          {user.role==="EXEC" && view==="dashboard" && <ExecDashboard/>}
-          {user.role==="MEMBER" && view==="dashboard" && <MemberDashboard user={user}/>}
+  if(!user) return <Login onLogin={setUser}/>;
 
-          {user.role==="EXEC" && view==="members" &&
-            <MembersDirectory onSelect={m=>{setSelectedMember(m);setView("profile");}}/>
-          }
+  return(
+    <div style={{display:"flex"}}>
+      <Sidebar
+        collapsed={collapsed}
+        toggle={()=>setCollapsed(p=>!p)}
+        isMobile={isMobile}
+        mobileOpen={mobileOpen}
+        onClose={()=>setMobileOpen(false)}
+        page={page}
+        setPage={setPage}
+      />
 
-          {view==="profile" && selectedMember &&
-            <MemberProfile member={selectedMember}/>
-          }
+      <div style={{
+        marginLeft:isMobile?0:(collapsed?70:220),
+        width:"100%"
+      }}>
+        <div style={{padding:10,background:"#fff",borderBottom:"1px solid #ddd"}}>
+          {isMobile && <Btn onClick={()=>setMobileOpen(p=>!p)}>☰</Btn>}
+          <Btn onClick={()=>setUser(null)}>Logout</Btn>
+        </div>
 
-          {view==="ledger" && <Ledger/>}
-          {view==="announcements" && <Announcements/>}
-          {view==="surveys" && <Surveys/>}
+        <div style={{padding:20}}>
+          {page==="dashboard" && <h2>Dashboard</h2>}
+
+          {page==="members" && MEMBERS.map(m=>(
+            <Card key={m.id}>
+              <h3>{m.name}</h3>
+              <NotesPanel
+                memberId={m.id}
+                currentUser={user}
+                notes={notes}
+                setNotes={setNotes}
+              />
+            </Card>
+          ))}
         </div>
       </div>
     </div>
   );
 }
-
-/* ================= LOGIN ================= */
-
-function Login({onLogin}){
-  const [email,setEmail] = useState("");
-
-  return (
-    <div style={{padding:40}}>
-      <h2>JFB Union Login</h2>
-      <input placeholder="Email" onChange={e=>setEmail(e.target.value)}/>
-      <br/><br/>
-      <button onClick={()=>{
-        const u = users.find(x=>x.email===email);
-        if(u) onLogin(u);
-        else alert("Invalid user");
-      }}>Login</button>
-
-      <p style={{marginTop:10,fontSize:12}}>
-        admin@jfb.com (EXEC) <br/>
-        andre@jfb.com (MEMBER)
-      </p>
-    </div>
-  );
-}
-
-/* ================= LAYOUT ================= */
-
-function Sidebar({user,setView}){
-  return (
-    <div className="sidebar">
-      <h3>JFB Union</h3>
-
-      <button className="nav-btn" onClick={()=>setView("dashboard")}>Dashboard</button>
-
-      {user.role==="EXEC" && (
-        <>
-          <button className="nav-btn" onClick={()=>setView("members")}>Members</button>
-          <button className="nav-btn" onClick={()=>setView("ledger")}>Ledger</button>
-        </>
-      )}
-
-      <button className="nav-btn" onClick={()=>setView("announcements")}>Announcements</button>
-      <button className="nav-btn" onClick={()=>setView("surveys")}>Surveys</button>
-    </div>
-  );
-}
-
-function Topbar({user,logout}){
-  return (
-    <div className="topbar">
-      <div>{user.role}</div>
-      <button onClick={logout}>Logout</button>
-    </div>
-  );
-}
-
-/* ================= EXEC DASHBOARD ================= */
-
-function ExecDashboard(){
-  const arrears = members.filter(m=>m.status==="Arrears"||m.status==="Overdue").length;
-
-  return (
-    <div>
-      <h2>Executive Dashboard</h2>
-
-      <div className="grid grid-2">
-        <div className="card">Total Members: {members.length}</div>
-        <div className="card">In Arrears: {arrears}</div>
-      </div>
-    </div>
-  );
-}
-
-/* ================= MEMBER DASHBOARD ================= */
-
-function MemberDashboard({user}){
-  const member = members.find(m=>m.id===user.member_id);
-  const ledger = contributions.filter(c=>c.member_id===member.id);
-
-  return (
-    <div>
-      <h2>My Dashboard</h2>
-      <div className="card">
-        <h3>{member.name}</h3>
-        <p>Status: {member.status}</p>
-      </div>
-
-      <div className="card" style={{marginTop:10}}>
-        <h3>Contributions</h3>
-        {ledger.map((c,i)=>(
-          <div key={i}>{c.period} - {c.status}</div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ================= MEMBERS DIRECTORY ================= */
-
-function MembersDirectory({onSelect}){
-  const [search,setSearch] = useState("");
-
-  const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div>
-      <h2>Members</h2>
-      <input placeholder="Search..." onChange={e=>setSearch(e.target.value)}/>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th><th>Station</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(m=>(
-            <tr key={m.id} onClick={()=>onSelect(m)} style={{cursor:"pointer"}}>
-              <td>{m.name}</td>
-              <td>{m.station}</td>
-              <td>{m.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ================= MEMBER PROFILE ================= */
-
-function MemberProfile({member}){
-  const [notes,setNotes] = useState(member.notes || []);
-  const [newNote,setNewNote] = useState("");
-  const [hasCase,setHasCase] = useState(member.case);
-
-  return (
-    <div>
-      <h2>{member.name}</h2>
-
-      <div className="card">
-        <p>Rank: {member.rank}</p>
-        <p>Station: {member.station}</p>
-        <p>Status: {member.status}</p>
-      </div>
-
-      <div className="card" style={{marginTop:10}}>
-        <h3>Executive Notes</h3>
-        {notes.length===0 && <p>No notes yet</p>}
-        {notes.map((n,i)=><p key={i}>• {n}</p>)}
-
-        <input value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="Add note"/>
-        <button onClick={()=>{
-          if(newNote){
-            setNotes([...notes,newNote]);
-            setNewNote("");
-          }
-        }}>Add</button>
-      </div>
-
-      <div className="card" style={{marginTop:10}}>
-        <h3>Disciplinary Case</h3>
-        <select value={hasCase?"Yes":"No"} onChange={e=>setHasCase(e.target.value==="Yes")}>
-          <option>No</option>
-          <option>Yes</option>
-        </select>
-      </div>
-    </div>
-  );
-}
-
-/* ================= LEDGER ================= */
-
-function Ledger(){
-  return (
-    <div>
-      <h2>Contributions Ledger</h2>
-      <table>
-        <thead>
-          <tr><th>Member ID</th><th>Period</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          {contributions.map((c,i)=>(
-            <tr key={i}>
-              <td>{c.member_id}</td>
-              <td>{c.period}</td>
-              <td>{c.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ================= ANNOUNCEMENTS ================= */
-
-function Announcements(){
-  return (
-    <div className="card">
-      <h2>Announcements</h2>
-      <p>No announcements yet.</p>
-    </div>
-  );
-}
-
-/* ================= SURVEYS ================= */
-
-function Surveys(){
-  return (
-    <div className="card">
-      <h2>Surveys</h2>
-      <p>No surveys available.</p>
-    </div>
-  );
-}
-
-/* ================= RENDER ================= */
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 
