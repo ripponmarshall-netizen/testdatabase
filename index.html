@@ -1,221 +1,1505 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JFB Union Platform</title>
+import { useState, useMemo, useEffect } from “react”;
 
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-
-<body>
-<div id="root"></div>
-
-<script type="text/babel">
-
-const { useState, useEffect } = React;
-
-/* ================= RESPONSIVE ================= */
-function useWindowWidth(){
-  const [w,setW]=useState(window.innerWidth);
-  useEffect(()=>{
-    const h=()=>setW(window.innerWidth);
-    window.addEventListener("resize",h);
-    return()=>window.removeEventListener("resize",h);
-  },[]);
-  return w;
+/* ═══════════════════════════════════════════════════════════════
+RESPONSIVE HOOK — fixes the @media-in-inline-style bug.
+React ignores @media keys in style objects entirely. We use
+a JS hook instead so sidebar behaviour is driven by state.
+═══════════════════════════════════════════════════════════════ */
+function useWindowWidth() {
+const [width, setWidth] = useState(
+typeof window !== “undefined” ? window.innerWidth : 1200
+);
+useEffect(() => {
+const h = () => setWidth(window.innerWidth);
+window.addEventListener(“resize”, h);
+return () => window.removeEventListener(“resize”, h);
+}, []);
+return width;
 }
 
-/* ================= MOCK ================= */
+/* ═══════════════════════════════════════════════════════════════
+MOCK DATA
+═══════════════════════════════════════════════════════════════ */
+const STATIONS = [
+{ id:“ST01”, name:“Port Antonio Fire Station”, division:“Portland” },
+{ id:“ST02”, name:“Hope Bay Fire Station”,     division:“Portland” },
+{ id:“ST03”, name:“Buff Bay Fire Station”,      division:“Portland” },
+{ id:“ST04”, name:“Manchioneal Fire Station”,   division:“Portland” },
+];
+
+const RANKS = [
+“Fire Commissioner”,“Deputy Commissioner”,“Senior Superintendent”,
+“Superintendent”,“Assistant Superintendent”,“Senior Inspector”,
+“Inspector”,“Station Officer”,“Sub-Station Officer”,“Leading Firefighter”,
+“Lance Corporal”,“Firefighter”,
+];
+
 const MEMBERS = [
-{id:"M001",name:"Rippon Marshall",rank:"Lance Corporal",status:"active"},
-{id:"M002",name:"Devon Campbell",rank:"Station Officer",status:"active"},
-{id:"M003",name:"Andre Williams",rank:"Firefighter",status:"suspended"}
+{ id:“M001”, name:“Rippon Marshall”,   rank:“Lance Corporal”,     station:“ST01”, branch:“Portland”, status:“active”,    email:“r.marshall@jfb.gov.jm”, phone:“876-555-0101”, join_date:“2019-03-15”, nis:“NIS-10023”, employee_id:“JFB-0445” },
+{ id:“M002”, name:“Devon Campbell”,    rank:“Station Officer”,     station:“ST01”, branch:“Portland”, status:“active”,    email:“d.campbell@jfb.gov.jm”, phone:“876-555-0102”, join_date:“2014-06-01”, nis:“NIS-09812”, employee_id:“JFB-0201” },
+{ id:“M003”, name:“Kezia Brown”,       rank:“Firefighter”,         station:“ST02”, branch:“Portland”, status:“active”,    email:“k.brown@jfb.gov.jm”,    phone:“876-555-0103”, join_date:“2021-01-10”, nis:“NIS-10892”, employee_id:“JFB-0567” },
+{ id:“M004”, name:“Omar Thompson”,     rank:“Leading Firefighter”, station:“ST01”, branch:“Portland”, status:“active”,    email:“o.thompson@jfb.gov.jm”, phone:“876-555-0104”, join_date:“2017-09-20”, nis:“NIS-10145”, employee_id:“JFB-0334” },
+{ id:“M005”, name:“Sophia Reid”,       rank:“Sub-Station Officer”, station:“ST03”, branch:“Portland”, status:“active”,    email:“s.reid@jfb.gov.jm”,     phone:“876-555-0105”, join_date:“2016-04-05”, nis:“NIS-10056”, employee_id:“JFB-0290” },
+{ id:“M006”, name:“Andre Williams”,    rank:“Firefighter”,         station:“ST02”, branch:“Portland”, status:“suspended”, email:“a.williams@jfb.gov.jm”, phone:“876-555-0106”, join_date:“2020-07-14”, nis:“NIS-10741”, employee_id:“JFB-0512” },
+{ id:“M007”, name:“Tamara Jackson”,    rank:“Inspector”,           station:“ST01”, branch:“Portland”, status:“active”,    email:“t.jackson@jfb.gov.jm”,  phone:“876-555-0107”, join_date:“2012-11-30”, nis:“NIS-09445”, employee_id:“JFB-0145” },
+{ id:“M008”, name:“Marcus Ellis”,      rank:“Lance Corporal”,      station:“ST04”, branch:“Portland”, status:“active”,    email:“m.ellis@jfb.gov.jm”,    phone:“876-555-0108”, join_date:“2022-02-28”, nis:“NIS-11023”, employee_id:“JFB-0601” },
+{ id:“M009”, name:“Natalie Gordon”,    rank:“Firefighter”,         station:“ST03”, branch:“Portland”, status:“resigned”,  email:“n.gordon@jfb.gov.jm”,   phone:“876-555-0109”, join_date:“2018-08-12”, nis:“NIS-10389”, employee_id:“JFB-0401” },
+{ id:“M010”, name:“Clive Francis”,     rank:“Senior Inspector”,    station:“ST01”, branch:“Portland”, status:“active”,    email:“c.francis@jfb.gov.jm”,  phone:“876-555-0110”, join_date:“2010-03-01”, nis:“NIS-08890”, employee_id:“JFB-0089” },
+{ id:“M011”, name:“Paula Sinclair”,    rank:“Leading Firefighter”, station:“ST02”, branch:“Portland”, status:“active”,    email:“p.sinclair@jfb.gov.jm”, phone:“876-555-0111”, join_date:“2019-10-20”, nis:“NIS-10499”, employee_id:“JFB-0470” },
+{ id:“M012”, name:“Rohan McKenzie”,    rank:“Firefighter”,         station:“ST04”, branch:“Portland”, status:“active”,    email:“r.mckenzie@jfb.gov.jm”, phone:“876-555-0112”, join_date:“2023-01-09”, nis:“NIS-11234”, employee_id:“JFB-0645” },
+{ id:“M013”, name:“Ingrid Barrett”,    rank:“Station Officer”,     station:“ST03”, branch:“Portland”, status:“active”,    email:“i.barrett@jfb.gov.jm”,  phone:“876-555-0113”, join_date:“2013-07-22”, nis:“NIS-09601”, employee_id:“JFB-0178” },
+{ id:“M014”, name:“Leroy Chambers”,    rank:“Firefighter”,         station:“ST01”, branch:“Portland”, status:“active”,    email:“l.chambers@jfb.gov.jm”, phone:“876-555-0114”, join_date:“2020-11-03”, nis:“NIS-10800”, employee_id:“JFB-0534” },
+{ id:“M015”, name:“Michelle Henry”,    rank:“Sub-Station Officer”, station:“ST04”, branch:“Portland”, status:“active”,    email:“m.henry@jfb.gov.jm”,    phone:“876-555-0115”, join_date:“2015-05-18”, nis:“NIS-09978”, employee_id:“JFB-0256” },
+];
+
+const PERIODS = [“2024-Q1”,“2024-Q2”,“2024-Q3”,“2024-Q4”,“2025-Q1”,“2025-Q2”];
+const C_STATUS = [“paid”,“paid”,“paid”,“partial”,“overdue”,“waived”];
+
+function genContributions() {
+const rows = [];
+MEMBERS.forEach(m => {
+PERIODS.forEach((p, i) => {
+const st = m.status === “resigned” ? “waived” : C_STATUS[Math.floor(Math.random() * C_STATUS.length)];
+const paid = st === “paid” ? 1500 : st === “partial” ? 750 : 0;
+rows.push({
+id:`${m.id}-${p}`, member_id:m.id, period:p,
+amount_due:1500, amount_paid:paid, status:st,
+paid_date:st===“paid”?`2024-0${(i+1).toString().padStart(2,"0")}-15`:null,
+receipt_no:st===“paid”?`REC-${m.id}-${i+1}`:null,
+});
+});
+});
+return rows;
+}
+const CONTRIBUTIONS = genContributions();
+
+const ANNOUNCEMENTS = [
+{ id:“A001”, title:“AGM Scheduled – August 2025”, body:“The Annual General Meeting is scheduled for Saturday 9 August 2025 at Port Antonio Fire Station at 10:00 AM. Attendance is mandatory for all active members in good standing. Proxy forms must be submitted by 2 August.”, priority:“high”, created_at:“2025-06-15”, author:“Executive – Portland Division”, pinned:true },
+{ id:“A002”, title:“Updated Dues Schedule Effective Q3 2025”, body:“Effective the third quarter of 2025 the standard quarterly contribution rate is revised to $1,500 JMD. Members in arrears are encouraged to contact the Branch Secretary to arrange a payment plan before the close of Q2.”, priority:“medium”, created_at:“2025-05-30”, author:“Branch Treasurer”, pinned:false },
+{ id:“A003”, title:“Welfare Fund Claim – Submission Window Open”, body:“The Welfare Fund claim window is open until 30 June 2025. Members who have experienced a qualifying event (hospitalization, bereavement, disaster) should submit Form WF-02 with supporting documents to the Branch Secretary.”, priority:“medium”, created_at:“2025-05-20”, author:“Branch Secretary”, pinned:false },
+{ id:“A004”, title:“New Grievance Procedure – Effective Immediately”, body:“The union executive has ratified a revised grievance procedure under the Labour Relations & Industrial Disputes Act. All complaints must now be filed within 14 calendar days using Form GR-01.”, priority:“low”, created_at:“2025-04-10”, author:“Executive Committee”, pinned:false },
+];
+
+const SURVEYS = [
+{
+id:“S001”, title:“Q2 2025 Member Satisfaction Survey”, status:“active”,
+created_at:“2025-06-01”, closes_at:“2025-06-30”,
+questions:[
+{ id:“Q1”, text:“How satisfied are you with the union’s representation in the past quarter?”, type:“scale” },
+{ id:“Q2”, text:“Have you experienced a workplace safety issue that was not resolved?”, type:“boolean” },
+{ id:“Q3”, text:“What area should the executive prioritize in the next quarter?”, type:“choice”, options:[“Wages”,“Welfare”,“Safety”,“Training”,“Legal Aid”] },
+{ id:“Q4”, text:“Additional comments or concerns”, type:“text” },
+],
+responses:[
+{ member_id:“M002”, submitted_at:“2025-06-03”, answers:{ Q1:4, Q2:false, Q3:“Welfare”, Q4:“Good work overall.” } },
+{ member_id:“M007”, submitted_at:“2025-06-05”, answers:{ Q1:3, Q2:true,  Q3:“Safety”,  Q4:“We need better PPE at ST03.” } },
+{ member_id:“M010”, submitted_at:“2025-06-08”, answers:{ Q1:5, Q2:false, Q3:“Training”, Q4:”” } },
+],
+},
+{
+id:“S002”, title:“Station Facilities Assessment 2025”, status:“closed”,
+created_at:“2025-03-01”, closes_at:“2025-03-31”,
+questions:[
+{ id:“Q1”, text:“Rate the overall condition of your station’s facilities.”, type:“scale” },
+{ id:“Q2”, text:“Is PPE available and in serviceable condition?”, type:“boolean” },
+],
+responses:[
+{ member_id:“M001”, submitted_at:“2025-03-10”, answers:{ Q1:3, Q2:true  } },
+{ member_id:“M004”, submitted_at:“2025-03-12”, answers:{ Q1:2, Q2:false } },
+],
+},
 ];
 
 const USER_ACCOUNTS = [
-{id:"U1",member_id:"M001",email:"r.marshall@jfb.gov.jm",role:"member",password:"member123"},
-{id:"U2",member_id:"M002",email:"d.campbell@jfb.gov.jm",role:"exec",password:"exec123"},
+{ id:“U001”, member_id:“M001”, email:“r.marshall@jfb.gov.jm”, role:“member”, password:“member123” },
+{ id:“U002”, member_id:“M007”, email:“t.jackson@jfb.gov.jm”,  role:“exec”,   password:“exec123” },
+{ id:“U003”, member_id:“M010”, email:“c.francis@jfb.gov.jm”,  role:“exec”,   password:“exec456” },
 ];
 
+/* Seed notes — maps to a future member_notes table
+Schema: id, member_id, author_id, category, title, body,
+is_confidential, case_ref, created_at, updated_at   */
 const SEED_NOTES = [
-{id:"N1",member_id:"M003",author_id:"U2",category:"disciplinary",title:"Suspension Case",body:"Violation of protocol",is_confidential:true,created_at:"2025-04-01"}
+{
+id:“N001”, member_id:“M006”, author_id:“U002”,
+category:“disciplinary”,
+title:“Suspension – Insubordination Incident”,
+body:“Member suspended without pay effective 2025-04-01 following a formal disciplinary hearing on 2025-03-28. Member failed to comply with a direct lawful order from Station Officer Campbell on 2025-03-20. Suspension period: 30 days. Member was verbally informed and issued written notice (Form D-04). Union representation was provided by Inspector Jackson.”,
+is_confidential:true, case_ref:“DISC-2025-003”,
+created_at:“2025-04-01”, updated_at:“2025-04-01”,
+},
+{
+id:“N002”, member_id:“M006”, author_id:“U003”,
+category:“welfare”,
+title:“Welfare Follow-up – Housing Assistance”,
+body:“Member applied for welfare fund housing assistance on 2025-01-15. Application WF-2025-041 submitted. Awaiting board approval. Station Officer to confirm current residential status at next check-in.”,
+is_confidential:false, case_ref:“WF-2025-041”,
+created_at:“2025-01-20”, updated_at:“2025-02-05”,
+},
+{
+id:“N003”, member_id:“M004”, author_id:“U002”,
+category:“grievance”,
+title:“Grievance – Overtime Pay Dispute Q4 2024”,
+body:“Member filed formal grievance GR-2024-018 on 2024-11-10 alleging unpaid overtime for September–October 2024. Referred to Branch Secretary for mediation with divisional payroll. Pending response from HR.”,
+is_confidential:false, case_ref:“GR-2024-018”,
+created_at:“2024-11-10”, updated_at:“2024-11-10”,
+},
 ];
 
-/* ================= STYLES ================= */
-const T={
-bg:"#f7f6f4", surface:"#fff", border:"#e4e2de",
-text:"#1a1917", muted:"#6b6860", accent:"#1d4ed8",
-sidebar:"#141412", sidebarText:"#d6d4d0"
+/* ═══════════════════════════════════════════════════════════════
+HELPERS
+═══════════════════════════════════════════════════════════════ */
+const getMemberById  = id => MEMBERS.find(m => m.id === id);
+const getStationById = id => STATIONS.find(s => s.id === id);
+const getMemberContribs = id => CONTRIBUTIONS.filter(c => c.member_id === id);
+const arrearsSummary = id => getMemberContribs(id)
+.filter(c => c.status===“overdue”||c.status===“partial”)
+.reduce((a,c)=>a+(c.amount_due-c.amount_paid),0);
+const memberStanding = id => {
+const a = arrearsSummary(id);
+if (a===0) return “good-standing”;
+if (a<=1500) return “minor-arrears”;
+return “arrears”;
+};
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+/* ═══════════════════════════════════════════════════════════════
+DESIGN TOKENS
+═══════════════════════════════════════════════════════════════ */
+const T = {
+bg:”#f7f6f4”, surface:”#ffffff”, surfaceAlt:”#f1f0ee”,
+border:”#e4e2de”,
+text:”#1a1917”, textSub:”#6b6860”, textMuted:”#9c9a96”,
+accent:”#1d4ed8”, accentLight:”#eff6ff”, accentBorder:”#bfdbfe”,
+sidebar:”#141412”, sidebarText:”#d6d4d0”, sidebarMuted:”#8a8880”,
+danger:”#dc2626”, dangerLight:”#fef2f2”,
+warning:”#d97706”, warningLight:”#fffbeb”,
+success:”#16a34a”,
+radius:“6px”, radiusLg:“10px”,
+shadow:“0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04)”,
 };
 
-/* ================= COMPONENTS ================= */
-function Btn({children,onClick}){
-  return <button onClick={onClick} style={{padding:"6px 12px",cursor:"pointer"}}>{children}</button>;
+const NOTE_CATS = [
+{ value:“general”,      label:“General Note”,   color:”#64748b”, bg:”#f8fafc” },
+{ value:“disciplinary”, label:“Disciplinary”,    color:”#dc2626”, bg:”#fef2f2” },
+{ value:“grievance”,    label:“Grievance”,        color:”#d97706”, bg:”#fffbeb” },
+{ value:“welfare”,      label:“Welfare”,          color:”#16a34a”, bg:”#f0fdf4” },
+{ value:“legal”,        label:“Legal / Case”,     color:”#7c3aed”, bg:”#f5f3ff” },
+{ value:“commendation”, label:“Commendation”,     color:”#0284c7”, bg:”#f0f9ff” },
+];
+const getCat = v => NOTE_CATS.find(c=>c.value===v) || NOTE_CATS[0];
+
+const STATUS_COLORS = {
+active:”#16a34a”, suspended:”#dc2626”, resigned:”#64748b”,
+paid:”#16a34a”, partial:”#d97706”, overdue:”#dc2626”, waived:”#64748b”,
+“good-standing”:”#16a34a”,“minor-arrears”:”#d97706”, arrears:”#dc2626”,
+high:”#dc2626”, medium:”#d97706”, low:”#64748b”,
+active_survey:”#2563eb”, closed:”#64748b”,
+};
+
+/* ═══════════════════════════════════════════════════════════════
+BASE COMPONENTS
+═══════════════════════════════════════════════════════════════ */
+function StatusBadge({ status, label }) {
+const color = STATUS_COLORS[status] || “#64748b”;
+return (
+<span style={{ display:“inline-flex”, alignItems:“center”, gap:4, padding:“2px 8px”, borderRadius:4, background:color+“18”, color, fontSize:11, fontWeight:600, letterSpacing:“0.04em”, textTransform:“uppercase”, border:`1px solid ${color}30` }}>
+<span style={{ width:5, height:5, borderRadius:“50%”, background:color, display:“inline-block” }} />
+{label||status}
+</span>
+);
 }
 
-function Card({children}){
-  return <div style={{background:"#fff",padding:16,border:"1px solid #ddd",marginBottom:10}}>{children}</div>;
+function Card({ children, style={}, pad=“20px” }) {
+return <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:T.radiusLg, padding:pad, boxShadow:T.shadow, …style }}>{children}</div>;
 }
 
-/* ================= LOGIN ================= */
-function Login({onLogin}){
-  const [email,setEmail]=useState("");
-  const [pw,setPw]=useState("");
-
-  return(
-    <div style={{padding:40}}>
-      <h2>Login</h2>
-      <input placeholder="email" onChange={e=>setEmail(e.target.value)} /><br/><br/>
-      <input placeholder="password" type="password" onChange={e=>setPw(e.target.value)} /><br/><br/>
-      <Btn onClick={()=>{
-        const u=USER_ACCOUNTS.find(x=>x.email===email && x.password===pw);
-        if(u) onLogin(u);
-        else alert("invalid");
-      }}>Login</Btn>
-    </div>
-  );
+function KPICard({ label, value, sub, accent=false, danger=false, icon }) {
+const bg = danger?T.dangerLight:accent?T.accentLight:T.surface;
+const col = danger?T.danger:accent?T.accent:T.text;
+return (
+<div style={{ background:bg, border:`1px solid ${danger?"#fecaca":accent?T.accentBorder:T.border}`, borderRadius:T.radiusLg, padding:“18px 20px”, display:“flex”, flexDirection:“column”, gap:6, boxShadow:T.shadow }}>
+<div style={{ display:“flex”, justifyContent:“space-between” }}>
+<span style={{ fontSize:11, fontWeight:600, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.06em” }}>{label}</span>
+{icon && <span style={{ fontSize:18, opacity:0.5 }}>{icon}</span>}
+</div>
+<div style={{ fontSize:26, fontWeight:700, color:col, fontFamily:”‘DM Mono’,monospace”, letterSpacing:”-0.5px” }}>{value}</div>
+{sub && <div style={{ fontSize:11, color:T.textMuted }}>{sub}</div>}
+</div>
+);
 }
 
-/* ================= SIDEBAR ================= */
-function Sidebar({collapsed,toggle,isMobile,mobileOpen,onClose,page,setPage}){
-  const width = collapsed ? 70 : 220;
+function Btn({ children, onClick, v=“primary”, sz=“md”, disabled=false, style={} }) {
+const pads={ sm:“5px 10px”, md:“8px 16px”, lg:“10px 20px” };
+const fns={ sm:11, md:13, lg:14 };
+const vs={
+primary:  { background:T.accent,  color:”#fff”,  border:“none” },
+secondary:{ background:T.surface, color:T.text,  border:`1px solid ${T.border}` },
+danger:   { background:T.danger,  color:”#fff”,  border:“none” },
+ghost:    { background:“transparent”, color:T.textSub, border:“none” },
+};
+return (
+<button onClick={onClick} disabled={disabled} style={{ padding:pads[sz], fontSize:fns[sz], fontWeight:600, borderRadius:T.radius, cursor:disabled?“not-allowed”:“pointer”, opacity:disabled?0.5:1, fontFamily:“inherit”, display:“inline-flex”, alignItems:“center”, gap:6, transition:“opacity 0.15s”, …vs[v], …style }}>
+{children}
+</button>
+);
+}
 
-  return(
-    <>
-    {isMobile && mobileOpen && (
-      <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)"}}/>
-    )}
+function Input({ value, onChange, placeholder, type=“text”, style={} }) {
+return (
+<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+style={{ border:`1px solid ${T.border}`, borderRadius:T.radius, padding:“8px 12px”, fontSize:13, color:T.text, background:T.surface, outline:“none”, fontFamily:“inherit”, width:“100%”, boxSizing:“border-box”, …style }}
+onFocus={e=>e.target.style.borderColor=T.accent} onBlur={e=>e.target.style.borderColor=T.border} />
+);
+}
 
-    <div style={{
-      position:"fixed",
-      left:0,top:0,bottom:0,
-      width,
-      background:T.sidebar,
-      color:"#fff",
-      transform:isMobile ? (mobileOpen?"translateX(0)":"translateX(-100%)"):"none",
-      transition:"0.2s"
-    }}>
-      <div style={{padding:10}}>
-        <Btn onClick={toggle}>{collapsed?"➡":"⬅"}</Btn>
+function Textarea({ value, onChange, placeholder, rows=4 }) {
+return (
+<textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
+style={{ border:`1px solid ${T.border}`, borderRadius:T.radius, padding:“9px 12px”, fontSize:13, color:T.text, background:T.surface, outline:“none”, fontFamily:“inherit”, width:“100%”, boxSizing:“border-box”, resize:“vertical”, lineHeight:1.6 }}
+onFocus={e=>e.target.style.borderColor=T.accent} onBlur={e=>e.target.style.borderColor=T.border} />
+);
+}
+
+function Sel({ value, onChange, children, style={} }) {
+return (
+<select value={value} onChange={e=>onChange(e.target.value)}
+style={{ border:`1px solid ${T.border}`, borderRadius:T.radius, padding:“8px 12px”, fontSize:13, color:T.text, background:T.surface, fontFamily:“inherit”, cursor:“pointer”, …style }}>
+{children}
+</select>
+);
+}
+
+function SectionHdr({ title, sub, action }) {
+return (
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, marginBottom:20 }}>
+<div>
+<h2 style={{ margin:0, fontSize:16, fontWeight:700, color:T.text }}>{title}</h2>
+{sub && <p style={{ margin:“4px 0 0”, fontSize:12, color:T.textMuted }}>{sub}</p>}
+</div>
+{action}
+</div>
+);
+}
+
+function Empty({ icon=“📭”, title, desc }) {
+return (
+<div style={{ textAlign:“center”, padding:“48px 24px”, color:T.textMuted }}>
+<div style={{ fontSize:36, marginBottom:12 }}>{icon}</div>
+<div style={{ fontWeight:600, color:T.textSub, marginBottom:6 }}>{title}</div>
+<div style={{ fontSize:12 }}>{desc}</div>
+</div>
+);
+}
+
+function Avatar({ name, size=32 }) {
+const init = name.split(” “).map(w=>w[0]).slice(0,2).join(””);
+const hue = name.split(””).reduce((a,c)=>a+c.charCodeAt(0),0)%360;
+return (
+<div style={{ width:size, height:size, borderRadius:“50%”, background:`hsl(${hue},40%,88%)`, color:`hsl(${hue},50%,35%)`, display:“flex”, alignItems:“center”, justifyContent:“center”, fontSize:size*0.35, fontWeight:700, flexShrink:0, border:`2px solid hsl(${hue},30%,78%)` }}>
+{init}
+</div>
+);
+}
+
+function Tag({ children }) {
+return <span style={{ display:“inline-block”, padding:“2px 7px”, borderRadius:4, background:T.surfaceAlt, border:`1px solid ${T.border}`, fontSize:11, color:T.textSub, fontWeight:500 }}>{children}</span>;
+}
+
+const lblStyle = { display:“block”, fontSize:11, fontWeight:600, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.04em”, marginBottom:6 };
+
+/* ═══════════════════════════════════════════════════════════════
+MODAL
+═══════════════════════════════════════════════════════════════ */
+function Modal({ open, onClose, title, children, width=560 }) {
+useEffect(()=>{
+document.body.style.overflow = open ? “hidden” : “”;
+return ()=>{ document.body.style.overflow=””; };
+},[open]);
+if (!open) return null;
+return (
+<div onClick={onClose} style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,0.45)”, zIndex:500, display:“flex”, alignItems:“center”, justifyContent:“center”, padding:16 }}>
+<div onClick={e=>e.stopPropagation()} style={{ background:T.surface, borderRadius:T.radiusLg, width:“100%”, maxWidth:width, boxShadow:“0 20px 60px rgba(0,0,0,0.2)”, maxHeight:“90vh”, display:“flex”, flexDirection:“column” }}>
+<div style={{ padding:“18px 22px”, borderBottom:`1px solid ${T.border}`, display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<h2 style={{ margin:0, fontSize:15, fontWeight:700, color:T.text }}>{title}</h2>
+<button onClick={onClose} style={{ background:“none”, border:“none”, fontSize:20, cursor:“pointer”, color:T.textMuted, lineHeight:1, padding:“0 4px” }}>×</button>
+</div>
+<div style={{ padding:“20px 22px”, overflowY:“auto”, flex:1 }}>{children}</div>
+</div>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MEMBER NOTES SYSTEM
+═══════════════════════════════════════════════════════════════ */
+function NoteCard({ note, onEdit, onDelete, authorName }) {
+const [exp, setExp] = useState(false);
+const cat = getCat(note.category);
+const long = note.body.length > 200;
+return (
+<div style={{ border:`1px solid ${cat.color}30`, borderLeft:`3px solid ${cat.color}`, borderRadius:T.radius, padding:“14px 16px”, background:cat.bg, marginBottom:12 }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:8 }}>
+<div style={{ flex:1 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:7, flexWrap:“wrap”, marginBottom:5 }}>
+<span style={{ fontSize:10, fontWeight:700, color:cat.color, textTransform:“uppercase”, letterSpacing:“0.05em”, background:cat.color+“18”, padding:“2px 7px”, borderRadius:3 }}>{cat.label}</span>
+{note.is_confidential && <span style={{ fontSize:10, fontWeight:700, color:”#7c3aed”, background:”#f5f3ff”, padding:“2px 7px”, borderRadius:3, border:“1px solid #e9d5ff” }}>🔒 Confidential</span>}
+{note.case_ref && <Tag>{note.case_ref}</Tag>}
+</div>
+<div style={{ fontSize:13, fontWeight:700, color:T.text, marginBottom:2 }}>{note.title}</div>
+<div style={{ fontSize:11, color:T.textMuted }}>{authorName} · {note.created_at}{note.updated_at!==note.created_at&&<i> (edited {note.updated_at})</i>}</div>
+</div>
+<div style={{ display:“flex”, gap:6, flexShrink:0 }}>
+<Btn sz="sm" v="secondary" onClick={onEdit}>Edit</Btn>
+<Btn sz=“sm” v=“ghost” onClick={onDelete} style={{ color:T.danger }}>Delete</Btn>
+</div>
+</div>
+<div style={{ marginTop:10, fontSize:12, color:T.textSub, lineHeight:1.65, overflow:“hidden”, display:exp?“block”:”-webkit-box”, WebkitLineClamp:exp?“none”:3, WebkitBoxOrient:“vertical” }}>
+{note.body}
+</div>
+{long && (
+<button onClick={()=>setExp(p=>!p)} style={{ marginTop:6, background:“none”, border:“none”, fontSize:11, color:cat.color, cursor:“pointer”, padding:0, fontFamily:“inherit”, fontWeight:600 }}>
+{exp?“Show less ↑”:“Read full note ↓”}
+</button>
+)}
+</div>
+);
+}
+
+function NoteForm({ open, onClose, onSave, initial, memberId, currentUser }) {
+const blank = { category:“general”, title:””, body:””, is_confidential:false, case_ref:”” };
+const [f, setF] = useState(blank);
+
+useEffect(()=>{ setF(initial?{…initial}:blank); }, [open, initial]);
+const set = (k,v) => setF(p=>({…p,[k]:v}));
+const valid = f.title.trim() && f.body.trim();
+
+function save() {
+if (!valid) return;
+onSave({ …f, id:initial?.id||`N${Date.now()}`, member_id:memberId, author_id:currentUser.id, created_at:initial?.created_at||todayStr(), updated_at:todayStr() });
+onClose();
+}
+
+return (
+<Modal open={open} onClose={onClose} title={initial?“Edit Note”:“Add Note / Case Record”} width={620}>
+<div style={{ display:“flex”, flexDirection:“column”, gap:14 }}>
+<div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:12 }}>
+<div>
+<label style={lblStyle}>Category</label>
+<select value={f.category} onChange={e=>set(“category”,e.target.value)}
+style={{ border:`1px solid ${T.border}`, borderRadius:T.radius, padding:“8px 12px”, fontSize:13, width:“100%”, fontFamily:“inherit”, background:T.surface, color:T.text }}>
+{NOTE_CATS.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
+</select>
+</div>
+<div>
+<label style={lblStyle}>Case / Reference No.</label>
+<Input value={f.case_ref} onChange={v=>set(“case_ref”,v)} placeholder=“e.g. DISC-2025-005” />
+</div>
+</div>
+<div>
+<label style={lblStyle}>Note Title *</label>
+<Input value={f.title} onChange={v=>set(“title”,v)} placeholder=“Brief subject of this note” />
+</div>
+<div>
+<label style={lblStyle}>Full Details *</label>
+<Textarea value={f.body} onChange={v=>set(“body”,v)} placeholder=“Record full details, dates, persons involved, decisions made, and next steps…” rows={7} />
+</div>
+<div style={{ display:“flex”, alignItems:“center”, gap:10, padding:“10px 14px”, borderRadius:T.radius, background:”#f5f3ff”, border:“1px solid #e9d5ff” }}>
+<input type=“checkbox” id=“conf” checked={f.is_confidential} onChange={e=>set(“is_confidential”,e.target.checked)} style={{ width:16, height:16, cursor:“pointer”, accentColor:”#7c3aed” }} />
+<label htmlFor=“conf” style={{ fontSize:12, color:”#7c3aed”, fontWeight:600, cursor:“pointer” }}>🔒 Mark as Confidential — visible to executive users only</label>
+</div>
+<div style={{ display:“flex”, justifyContent:“flex-end”, gap:10, paddingTop:4 }}>
+<Btn v="secondary" onClick={onClose}>Cancel</Btn>
+<Btn onClick={save} disabled={!valid}>{initial?“Save Changes”:“Add Note”}</Btn>
+</div>
+</div>
+</Modal>
+);
+}
+
+function NotesPanel({ memberId, currentUser, allNotes, onNotesChange }) {
+const [showForm, setShowForm] = useState(false);
+const [editing, setEditing] = useState(null);
+const [delId, setDelId] = useState(null);
+const [filterCat, setFilterCat] = useState(””);
+
+const notes = allNotes.filter(n=>n.member_id===memberId);
+const hasCase = notes.some(n=>n.category===“disciplinary”||n.category===“legal”);
+const sorted = […(filterCat?notes.filter(n=>n.category===filterCat):notes)].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+
+const getAuthor = aid => {
+const acc = USER_ACCOUNTS.find(u=>u.id===aid);
+const m = acc && getMemberById(acc.member_id);
+return m?m.name:“Executive”;
+};
+
+function save(note) {
+onNotesChange(allNotes.find(n=>n.id===note.id)
+? allNotes.map(n=>n.id===note.id?note:n)
+: […allNotes, note]);
+}
+
+function del() {
+onNotesChange(allNotes.filter(n=>n.id!==delId));
+setDelId(null);
+}
+
+return (
+<div>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:16, flexWrap:“wrap”, gap:10 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10 }}>
+<h3 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text }}>
+Notes & Case Records
+{notes.length>0 && <span style={{ marginLeft:8, fontSize:11, fontWeight:600, color:T.textMuted, background:T.surfaceAlt, border:`1px solid ${T.border}`, padding:“1px 8px”, borderRadius:10 }}>{notes.length}</span>}
+</h3>
+{hasCase && <span style={{ fontSize:10, fontWeight:700, color:T.danger, background:T.dangerLight, padding:“2px 8px”, borderRadius:4, border:“1px solid #fecaca”, textTransform:“uppercase”, letterSpacing:“0.04em” }}>⚠ Active Case</span>}
+</div>
+<div style={{ display:“flex”, gap:8 }}>
+<select value={filterCat} onChange={e=>setFilterCat(e.target.value)}
+style={{ border:`1px solid ${T.border}`, borderRadius:T.radius, padding:“5px 10px”, fontSize:11, fontFamily:“inherit”, background:T.surface, color:T.text }}>
+<option value="">All Categories</option>
+{NOTE_CATS.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
+</select>
+<Btn sz=“sm” onClick={()=>{ setEditing(null); setShowForm(true); }}>+ Add Note</Btn>
+</div>
+</div>
+
+```
+  {sorted.length===0
+    ? <div style={{ textAlign:"center", padding:"28px 20px", color:T.textMuted, border:`1.5px dashed ${T.border}`, borderRadius:T.radius, background:T.surfaceAlt }}>
+        <div style={{ fontSize:26, marginBottom:8 }}>📝</div>
+        <div style={{ fontWeight:600, color:T.textSub, fontSize:13, marginBottom:3 }}>{filterCat?"No notes in this category":"No notes recorded"}</div>
+        <div style={{ fontSize:11 }}>Executive notes, case records, and welfare flags will appear here.</div>
       </div>
+    : sorted.map(n=>(
+      <NoteCard key={n.id} note={n} authorName={getAuthor(n.author_id)}
+        onEdit={()=>{ setEditing(n); setShowForm(true); }}
+        onDelete={()=>setDelId(n.id)} />
+    ))
+  }
 
-      {["dashboard","members"].map(k=>(
-        <div key={k}
-          onClick={()=>{setPage(k); if(isMobile)onClose();}}
-          style={{padding:10,cursor:"pointer",color:T.sidebarText}}>
-          {!collapsed && k}
-        </div>
-      ))}
+  <NoteForm open={showForm} onClose={()=>{ setShowForm(false); setEditing(null); }} onSave={save} initial={editing} memberId={memberId} currentUser={currentUser} />
+
+  <Modal open={!!delId} onClose={()=>setDelId(null)} title="Delete Note" width={400}>
+    <p style={{ margin:"0 0 20px", fontSize:13, color:T.textSub, lineHeight:1.6 }}>This note will be permanently removed. This cannot be undone in the live system.</p>
+    <div style={{ display:"flex", justifyContent:"flex-end", gap:10 }}>
+      <Btn v="secondary" onClick={()=>setDelId(null)}>Cancel</Btn>
+      <Btn v="danger" onClick={del}>Delete Note</Btn>
     </div>
-    </>
-  );
+  </Modal>
+</div>
+```
+
+);
 }
 
-/* ================= NOTES PANEL ================= */
-function NotesPanel({memberId,currentUser,notes,setNotes}){
-  const [text,setText]=useState("");
+/* ═══════════════════════════════════════════════════════════════
+SIDEBAR — isMobile prop drives visibility; no @media needed
+═══════════════════════════════════════════════════════════════ */
+const EXEC_NAV = [
+{ key:“exec-dashboard”, label:“Dashboard”,        icon:“⬛” },
+{ key:“members”,        label:“Members Directory”, icon:“👥” },
+{ key:“contributions”,  label:“Contributions”,     icon:“💰” },
+{ key:“reports”,        label:“Reports”,           icon:“📊” },
+{ key:“surveys”,        label:“Surveys”,           icon:“📋” },
+{ key:“announcements”,  label:“Announcements”,     icon:“📢” },
+];
+const MEMBER_NAV = [
+{ key:“member-dashboard”,     label:“My Dashboard”,  icon:“🏠” },
+{ key:“my-profile”,           label:“My Profile”,    icon:“👤” },
+{ key:“my-contributions”,     label:“Contributions”, icon:“💰” },
+{ key:“member-surveys”,       label:“Surveys”,       icon:“📋” },
+{ key:“member-announcements”, label:“Notices”,       icon:“📢” },
+];
+const SIDEBAR_W = 220;
 
-  const filtered = notes.filter(n=>{
-    if(n.member_id!==memberId) return false;
-    if(currentUser.role==="exec") return true;
-    return !n.is_confidential;
-  });
+function Sidebar({ role, page, onNav, currentUser, onLogout, mobileOpen, onClose, isMobile }) {
+const nav = role===“exec”?EXEC_NAV:MEMBER_NAV;
+const member = getMemberById(currentUser?.member_id);
+// Desktop: always visible (no transform). Mobile: slide in/out.
+const transform = isMobile ? (mobileOpen?“translateX(0)”:“translateX(-100%)”) : “translateX(0)”;
 
-  return(
-    <Card>
-      <h3>Notes</h3>
+return (
+<>
+{isMobile && mobileOpen && (
+<div onClick={onClose} style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,0.45)”, zIndex:200 }} />
+)}
+<aside style={{ position:“fixed”, top:0, left:0, bottom:0, width:SIDEBAR_W, background:T.sidebar, display:“flex”, flexDirection:“column”, zIndex:201, fontFamily:“inherit”, transform, transition:“transform 0.22s cubic-bezier(0.4,0,0.2,1)” }}>
+<div style={{ padding:“20px 18px 16px”, borderBottom:“1px solid rgba(255,255,255,0.07)” }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10 }}>
+<div style={{ width:34, height:34, borderRadius:8, background:T.accent, display:“flex”, alignItems:“center”, justifyContent:“center”, fontSize:16 }}>🔥</div>
+<div>
+<div style={{ color:”#fff”, fontSize:12, fontWeight:700, lineHeight:1.2 }}>JFB Union</div>
+<div style={{ color:T.sidebarMuted, fontSize:10, marginTop:1 }}>Portland Division</div>
+</div>
+</div>
+</div>
 
-      {currentUser.role!=="exec" && (
-        <p style={{fontSize:12,color:"#888"}}>
-          Some executive notes are restricted.
-        </p>
-      )}
+```
+    <div style={{ padding:"12px 18px", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+      <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 10px", borderRadius:4, background:role==="exec"?"rgba(29,78,216,0.25)":"rgba(22,163,74,0.2)", border:`1px solid ${role==="exec"?"rgba(29,78,216,0.4)":"rgba(22,163,74,0.3)"}`, fontSize:10, fontWeight:700, color:role==="exec"?"#93c5fd":"#86efac", textTransform:"uppercase", letterSpacing:"0.05em" }}>
+        <span style={{ width:5, height:5, borderRadius:"50%", background:"currentColor", display:"inline-block" }} />
+        {role==="exec"?"Executive Access":"Member Access"}
+      </div>
+    </div>
 
-      {filtered.map(n=>(
-        <div key={n.id} style={{marginBottom:8}}>
-          <b>{n.title}</b>
-          <p>{n.body}</p>
+    <nav style={{ flex:1, padding:"12px 10px", overflowY:"auto" }}>
+      {nav.map(item=>{
+        const active = page===item.key;
+        return (
+          <button key={item.key} onClick={()=>{ onNav(item.key); if(isMobile) onClose(); }}
+            style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"9px 10px", borderRadius:6, marginBottom:2, background:active?T.accent:"transparent", border:"none", cursor:"pointer", textAlign:"left", color:active?"#fff":T.sidebarText, fontSize:13, fontWeight:active?600:400, transition:"background 0.15s" }}
+            onMouseEnter={e=>{ if(!active) e.currentTarget.style.background="rgba(255,255,255,0.06)"; }}
+            onMouseLeave={e=>{ if(!active) e.currentTarget.style.background="transparent"; }}>
+            <span style={{ fontSize:14, opacity:active?1:0.7 }}>{item.icon}</span>
+            {item.label}
+          </button>
+        );
+      })}
+    </nav>
+
+    <div style={{ padding:"14px 18px", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
+      {member && (
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+          <Avatar name={member.name} size={30} />
+          <div>
+            <div style={{ color:"#fff", fontSize:12, fontWeight:600, lineHeight:1.3 }}>{member.name}</div>
+            <div style={{ color:T.sidebarMuted, fontSize:10 }}>{member.rank}</div>
+          </div>
         </div>
-      ))}
-
-      {currentUser.role==="exec" && (
-        <>
-          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Add note"/>
-          <Btn onClick={()=>{
-            setNotes([...notes,{
-              id:Date.now(),
-              member_id:memberId,
-              title:"New Note",
-              body:text,
-              is_confidential:false
-            }]);
-            setText("");
-          }}>Add</Btn>
-        </>
       )}
+      <Btn onClick={onLogout} v="ghost" sz="sm" style={{ color:T.sidebarMuted, width:"100%", justifyContent:"center" }}>Sign Out</Btn>
+    </div>
+  </aside>
+</>
+```
+
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+TOPBAR
+═══════════════════════════════════════════════════════════════ */
+function Topbar({ title, onMenuToggle, isMobile }) {
+return (
+<div style={{ height:52, background:T.surface, borderBottom:`1px solid ${T.border}`, display:“flex”, alignItems:“center”, padding:“0 20px”, gap:14, position:“sticky”, top:0, zIndex:100 }}>
+{isMobile && (
+<button onClick={onMenuToggle} style={{ background:“none”, border:“none”, cursor:“pointer”, fontSize:20, color:T.text, padding:“2px 6px”, lineHeight:1, flexShrink:0 }}>☰</button>
+)}
+<h1 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text, flex:1 }}>{title}</h1>
+<div style={{ fontSize:11, color:T.textMuted, whiteSpace:“nowrap” }}>
+{new Date().toLocaleDateString(“en-JM”,{ weekday:“short”, year:“numeric”, month:“short”, day:“numeric” })}
+</div>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+LOGIN
+═══════════════════════════════════════════════════════════════ */
+function Login({ onLogin }) {
+const [email, setEmail] = useState(””);
+const [pw, setPw] = useState(””);
+const [err, setErr] = useState(””);
+const [loading, setLoading] = useState(false);
+
+function go() {
+setErr(””); setLoading(true);
+setTimeout(()=>{
+const u = USER_ACCOUNTS.find(u=>u.email===email&&u.password===pw);
+if (u) onLogin(u); else setErr(“Invalid email or password. See demo credentials below.”);
+setLoading(false);
+},600);
+}
+
+return (
+<div style={{ minHeight:“100vh”, background:T.bg, display:“flex”, alignItems:“center”, justifyContent:“center”, padding:20 }}>
+<div style={{ width:“100%”, maxWidth:400 }}>
+<div style={{ textAlign:“center”, marginBottom:32 }}>
+<div style={{ width:56, height:56, borderRadius:14, background:T.sidebar, display:“flex”, alignItems:“center”, justifyContent:“center”, fontSize:26, margin:“0 auto 16px” }}>🔥</div>
+<h1 style={{ margin:“0 0 4px”, fontSize:20, fontWeight:800, color:T.text, letterSpacing:”-0.3px” }}>JFB Union Member Portal</h1>
+<p style={{ margin:0, fontSize:12, color:T.textMuted }}>Jamaica Fire Brigade · Portland Division</p>
+</div>
+<Card>
+<div style={{ marginBottom:16 }}>
+<label style={lblStyle}>JFB Email Address</label>
+<Input value={email} onChange={setEmail} placeholder="yourname@jfb.gov.jm" type="email" />
+</div>
+<div style={{ marginBottom:20 }}>
+<label style={lblStyle}>Password</label>
+<Input value={pw} onChange={setPw} placeholder="••••••••" type="password" />
+</div>
+{err && <div style={{ background:T.dangerLight, border:“1px solid #fecaca”, borderRadius:T.radius, padding:“10px 12px”, fontSize:11, color:T.danger, marginBottom:16, lineHeight:1.5 }}>{err}</div>}
+<Btn onClick={go} disabled={loading} style={{ width:“100%”, justifyContent:“center” }}>{loading?“Signing in…”:“Sign In”}</Btn>
+<div style={{ marginTop:20, padding:14, background:T.surfaceAlt, borderRadius:T.radius, fontSize:11, color:T.textSub, lineHeight:1.9 }}>
+<strong>Demo accounts:</strong><br />
+👔 <code style={{ fontSize:10 }}>t.jackson@jfb.gov.jm</code> / <code style={{ fontSize:10 }}>exec123</code> — Executive<br />
+🪖 <code style={{ fontSize:10 }}>r.marshall@jfb.gov.jm</code> / <code style={{ fontSize:10 }}>member123</code> — Member
+</div>
+</Card>
+<p style={{ textAlign:“center”, fontSize:11, color:T.textMuted, marginTop:16 }}>🔒 Authorised personnel only · Prototype v0.2</p>
+</div>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+EXEC DASHBOARD
+═══════════════════════════════════════════════════════════════ */
+function ExecDashboard({ onNav, allNotes }) {
+const active = MEMBERS.filter(m=>m.status===“active”).length;
+const inArrears = MEMBERS.filter(m=>arrearsSummary(m.id)>0&&m.status===“active”).length;
+const totalOwing = MEMBERS.reduce((a,m)=>a+arrearsSummary(m.id),0);
+const openCases = allNotes.filter(n=>n.category===“disciplinary”||n.category===“legal”).length;
+const activeSurveys = SURVEYS.filter(s=>s.status===“active”).length;
+
+const arrearsList = MEMBERS.filter(m=>arrearsSummary(m.id)>0&&m.status===“active”).sort((a,b)=>arrearsSummary(b.id)-arrearsSummary(a.id)).slice(0,5);
+
+return (
+<div>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(150px,1fr))”, gap:14, marginBottom:24 }}>
+<KPICard label=“Total Members” value={MEMBERS.length} sub={`${active} active`} icon=“👥” />
+<KPICard label="In Arrears" value={inArrears} sub="Active members" danger={inArrears>0} icon=“⚠️” />
+<KPICard label=“Total Owing” value={`$${totalOwing.toLocaleString()}`} sub=“JMD” danger={totalOwing>0} icon=“💳” />
+<KPICard label="Open Cases" value={openCases} sub="Disciplinary / Legal" danger={openCases>0} icon=“📁” />
+<KPICard label="Active Surveys" value={activeSurveys} sub="Awaiting responses" accent icon="📋" />
+</div>
+<div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:18, marginBottom:18 }}>
+<Card>
+<SectionHdr title=“Members in Arrears” sub=“Sorted by amount owing” action={<Btn sz=“sm” v=“secondary” onClick={()=>onNav(“contributions”)}>View All</Btn>} />
+{arrearsList.length===0
+? <Empty icon="✅" title="All members current" desc="No outstanding arrears." />
+: arrearsList.map(m=>(
+<div key={m.id} style={{ display:“flex”, alignItems:“center”, justifyContent:“space-between”, padding:“8px 0”, borderBottom:`1px solid ${T.border}` }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10 }}>
+<Avatar name={m.name} size={28} />
+<div>
+<div style={{ fontSize:13, fontWeight:600, color:T.text }}>{m.name}</div>
+<div style={{ fontSize:11, color:T.textMuted }}>{m.rank}</div>
+</div>
+</div>
+<div style={{ textAlign:“right” }}>
+<div style={{ fontSize:13, fontWeight:700, color:T.danger }}>${arrearsSummary(m.id).toLocaleString()}</div>
+<div style={{ fontSize:10, color:T.textMuted }}>owing</div>
+</div>
+</div>
+))
+}
+</Card>
+<Card>
+<SectionHdr title=“Recent Notices” action={<Btn sz=“sm” v=“secondary” onClick={()=>onNav(“announcements”)}>View All</Btn>} />
+{ANNOUNCEMENTS.slice(0,3).map(a=>(
+<div key={a.id} style={{ padding:“10px 0”, borderBottom:`1px solid ${T.border}` }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, gap:8 }}>
+<div>
+<div style={{ fontSize:13, fontWeight:600, color:T.text, marginBottom:2 }}>{a.title}</div>
+<div style={{ fontSize:11, color:T.textMuted }}>{a.created_at} · {a.author}</div>
+</div>
+<StatusBadge status={a.priority} label={a.priority} />
+</div>
+</div>
+))}
+</Card>
+</div>
+<Card>
+<SectionHdr title="Membership by Station" sub="Active members per station" />
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(200px,1fr))”, gap:12 }}>
+{STATIONS.map(st=>{
+const stM = MEMBERS.filter(m=>m.station===st.id&&m.status===“active”);
+const stA = stM.filter(m=>arrearsSummary(m.id)>0);
+return (
+<div key={st.id} style={{ padding:“14px 16px”, borderRadius:T.radius, background:T.surfaceAlt, border:`1px solid ${T.border}` }}>
+<div style={{ fontSize:12, fontWeight:700, color:T.text, marginBottom:4 }}>{st.name}</div>
+<div style={{ fontSize:24, fontWeight:800, color:T.accent, fontFamily:”‘DM Mono’,monospace” }}>{stM.length}</div>
+<div style={{ fontSize:11, color:T.textMuted, marginTop:2 }}>
+{stA.length>0?<span style={{ color:T.warning }}>{stA.length} in arrears</span>:<span style={{ color:T.success }}>All current</span>}
+</div>
+</div>
+);
+})}
+</div>
+</Card>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MEMBERS DIRECTORY
+═══════════════════════════════════════════════════════════════ */
+function MembersDir({ onNav, setSelId, allNotes }) {
+const [search, setSearch] = useState(””);
+const [fSt, setFSt] = useState(””);
+const [fStatus, setFStatus] = useState(””);
+const [fRank, setFRank] = useState(””);
+
+const filtered = useMemo(()=>MEMBERS.filter(m=>{
+const q=search.toLowerCase();
+return (!q||m.name.toLowerCase().includes(q)||m.employee_id.toLowerCase().includes(q)||m.rank.toLowerCase().includes(q))
+&&(!fSt||m.station===fSt)
+&&(!fStatus||m.status===fStatus)
+&&(!fRank||m.rank===fRank);
+}),[search,fSt,fStatus,fRank]);
+
+const open = id => { setSelId(id); onNav(“member-profile”); };
+
+return (
+<div>
+<Card style={{ marginBottom:16 }} pad=“14px 16px”>
+<div style={{ display:“flex”, gap:10, flexWrap:“wrap” }}>
+<Input value={search} onChange={setSearch} placeholder=“Search name, ID, rank…” style={{ maxWidth:240 }} />
+<Sel value={fSt} onChange={setFSt}>
+<option value="">All Stations</option>
+{STATIONS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+</Sel>
+<Sel value={fStatus} onChange={setFStatus}>
+<option value="">All Statuses</option>
+<option value="active">Active</option>
+<option value="suspended">Suspended</option>
+<option value="resigned">Resigned</option>
+</Sel>
+<Sel value={fRank} onChange={setFRank}>
+<option value="">All Ranks</option>
+{RANKS.map(r=><option key={r} value={r}>{r}</option>)}
+</Sel>
+{(search||fSt||fStatus||fRank)&&<Btn sz=“sm” v=“ghost” onClick={()=>{setSearch(””);setFSt(””);setFStatus(””);setFRank(””);}}>Clear</Btn>}
+</div>
+</Card>
+<Card pad="0">
+<div style={{ padding:“12px 16px”, borderBottom:`1px solid ${T.border}` }}>
+<span style={{ fontSize:12, color:T.textMuted }}>{filtered.length} member{filtered.length!==1?“s”:””} found</span>
+</div>
+{filtered.length===0
+? <Empty icon="🔍" title="No members match filters" desc="Adjust your search or filter criteria." />
+: <div style={{ overflowX:“auto” }}>
+<table style={{ width:“100%”, borderCollapse:“collapse”, fontSize:13 }}>
+<thead>
+<tr style={{ background:T.surfaceAlt }}>
+{[“Member”,“ID”,“Rank”,“Station”,“Status”,“Standing”,“Notes”,””].map(h=>(
+<th key={h} style={{ padding:“10px 14px”, textAlign:“left”, fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.05em”, borderBottom:`1px solid ${T.border}`, whiteSpace:“nowrap” }}>{h}</th>
+))}
+</tr>
+</thead>
+<tbody>
+{filtered.map((m,i)=>{
+const st = getStationById(m.station);
+const standing = memberStanding(m.id);
+const mNotes = allNotes.filter(n=>n.member_id===m.id);
+const hasCase = mNotes.some(n=>n.category===“disciplinary”||n.category===“legal”||n.category===“grievance”);
+return (
+<tr key={m.id} style={{ borderBottom:`1px solid ${T.border}`, background:i%2===0?T.surface:T.surfaceAlt+“50”, cursor:“pointer” }}
+onMouseEnter={e=>e.currentTarget.style.background=T.accentLight}
+onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt+“50”}
+onClick={()=>open(m.id)}>
+<td style={{ padding:“10px 14px” }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10 }}>
+<Avatar name={m.name} size={28} />
+<div>
+<div style={{ fontWeight:600, color:T.text }}>{m.name}</div>
+<div style={{ fontSize:10, color:T.textMuted }}>{m.email}</div>
+</div>
+</div>
+</td>
+<td style={{ padding:“10px 14px”, color:T.textSub, fontFamily:“monospace”, fontSize:11 }}>{m.employee_id}</td>
+<td style={{ padding:“10px 14px”, color:T.textSub }}>{m.rank}</td>
+<td style={{ padding:“10px 14px”, color:T.textSub, fontSize:11 }}>{st?.name?.replace(” Fire Station”,””)}</td>
+<td style={{ padding:“10px 14px” }}><StatusBadge status={m.status} /></td>
+<td style={{ padding:“10px 14px” }}><StatusBadge status={standing} label={standing===“good-standing”?“Good Standing”:standing===“minor-arrears”?“Minor Arrears”:“Arrears”} /></td>
+<td style={{ padding:“10px 14px” }}>
+{mNotes.length>0
+? <span style={{ display:“inline-flex”, alignItems:“center”, gap:5 }}>
+<span style={{ fontSize:11, color:T.textSub, fontWeight:600 }}>{mNotes.length}</span>
+{hasCase&&<span style={{ fontSize:10, color:T.danger, fontWeight:700, background:T.dangerLight, padding:“1px 5px”, borderRadius:3 }}>CASE</span>}
+</span>
+: <span style={{ fontSize:11, color:T.textMuted }}>—</span>
+}
+</td>
+<td style={{ padding:“10px 14px” }}>
+<Btn sz=“sm” v=“secondary” onClick={e=>{e.stopPropagation();open(m.id);}}>View</Btn>
+</td>
+</tr>
+);
+})}
+</tbody>
+</table>
+</div>
+}
+</Card>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MEMBER PROFILE — exec view with tabs (Contributions / Notes)
+═══════════════════════════════════════════════════════════════ */
+function MemberProfile({ memberId, onBack, allNotes, onNotesChange, currentUser }) {
+const [tab, setTab] = useState(“contributions”);
+const m = getMemberById(memberId);
+if (!m) return <Empty icon="❌" title="Member not found" desc="Invalid member ID." />;
+const st = getStationById(m.station);
+const contribs = getMemberContribs(m.id);
+const owing = arrearsSummary(m.id);
+const standing = memberStanding(m.id);
+const paid = contribs.filter(c=>c.status===“paid”).length;
+const mNotes = allNotes.filter(n=>n.member_id===m.id);
+const hasCase = mNotes.some(n=>n.category===“disciplinary”||n.category===“legal”);
+
+const tabs = [
+{ key:“contributions”, label:“Contributions” },
+{ key:“notes”, label:`Notes & Cases${mNotes.length>0?` (${mNotes.length})`:""}`},
+];
+
+return (
+<div>
+<div style={{ marginBottom:16 }}>
+<Btn sz=“sm” v=“ghost” onClick={onBack} style={{ color:T.textSub }}>← Back to Directory</Btn>
+</div>
+<Card style={{ marginBottom:16 }}>
+<div style={{ display:“flex”, alignItems:“flex-start”, gap:18, flexWrap:“wrap” }}>
+<Avatar name={m.name} size={60} />
+<div style={{ flex:1 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10, flexWrap:“wrap”, marginBottom:4 }}>
+<h2 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text }}>{m.name}</h2>
+<StatusBadge status={m.status} />
+<StatusBadge status={standing} label={standing===“good-standing”?“Good Standing”:standing===“minor-arrears”?“Minor Arrears”:“In Arrears”} />
+{hasCase&&<span style={{ fontSize:10, fontWeight:700, color:T.danger, background:T.dangerLight, padding:“2px 8px”, borderRadius:4, border:“1px solid #fecaca”, textTransform:“uppercase” }}>⚠ Active Case</span>}
+</div>
+<div style={{ fontSize:13, color:T.textSub, marginBottom:8 }}>{m.rank} · {st?.name}</div>
+<div style={{ display:“flex”, gap:8, flexWrap:“wrap” }}>
+<Tag>{m.employee_id}</Tag><Tag>{m.nis}</Tag><Tag>Joined {m.join_date}</Tag><Tag>{m.branch} Branch</Tag>
+</div>
+</div>
+{owing>0&&(
+<div style={{ background:T.dangerLight, border:“1px solid #fecaca”, borderRadius:T.radius, padding:“12px 16px”, textAlign:“right” }}>
+<div style={{ fontSize:10, fontWeight:600, color:T.danger, textTransform:“uppercase”, letterSpacing:“0.05em” }}>Outstanding</div>
+<div style={{ fontSize:22, fontWeight:800, color:T.danger, fontFamily:”‘DM Mono’,monospace” }}>${owing.toLocaleString()}</div>
+<div style={{ fontSize:10, color:T.textMuted }}>JMD</div>
+</div>
+)}
+</div>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(140px,1fr))”, gap:12, marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}` }}>
+{[[“Email”,m.email],[“Phone”,m.phone],[“Quarters Paid”,`${paid}/${PERIODS.length}`]].map(([l,v])=>(
+<div key={l}>
+<div style={{ fontSize:10, color:T.textMuted, textTransform:“uppercase”, letterSpacing:“0.05em”, marginBottom:2 }}>{l}</div>
+<div style={{ fontSize:12, color:T.text, fontWeight:l===“Quarters Paid”?700:400, color:l===“Quarters Paid”&&paid<PERIODS.length?T.warning:T.text }}>{v}</div>
+</div>
+))}
+</div>
+</Card>
+
+```
+  {/* Tab switcher */}
+  <div style={{ display:"flex", gap:0, marginBottom:16, background:T.surfaceAlt, borderRadius:T.radius, padding:3, border:`1px solid ${T.border}`, width:"fit-content" }}>
+    {tabs.map(t=>(
+      <button key={t.key} onClick={()=>setTab(t.key)}
+        style={{ padding:"7px 18px", borderRadius:5, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", background:tab===t.key?T.surface:"transparent", color:tab===t.key?T.text:T.textSub, boxShadow:tab===t.key?T.shadow:"none", transition:"all 0.15s" }}>
+        {t.label}
+      </button>
+    ))}
+  </div>
+
+  {tab==="contributions"&&(
+    <Card pad="0">
+      <div style={{ padding:"14px 16px", borderBottom:`1px solid ${T.border}` }}>
+        <h3 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text }}>Contribution History</h3>
+      </div>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+        <thead>
+          <tr style={{ background:T.surfaceAlt }}>
+            {["Period","Due","Paid","Balance","Status","Receipt"].map(h=>(
+              <th key={h} style={{ padding:"9px 14px", textAlign:"left", fontSize:10, fontWeight:700, color:T.textSub, textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:`1px solid ${T.border}` }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {contribs.map(c=>{
+            const bal = c.amount_due-c.amount_paid;
+            return (
+              <tr key={c.id} style={{ borderBottom:`1px solid ${T.border}` }}>
+                <td style={{ padding:"9px 14px", fontWeight:600, color:T.text }}>{c.period}</td>
+                <td style={{ padding:"9px 14px", fontFamily:"monospace" }}>${c.amount_due.toLocaleString()}</td>
+                <td style={{ padding:"9px 14px", fontFamily:"monospace", color:c.amount_paid>0?T.success:T.textMuted }}>${c.amount_paid.toLocaleString()}</td>
+                <td style={{ padding:"9px 14px", fontFamily:"monospace", color:bal>0?T.danger:T.textMuted }}>{bal>0?`$${bal.toLocaleString()}`:"—"}</td>
+                <td style={{ padding:"9px 14px" }}><StatusBadge status={c.status} /></td>
+                <td style={{ padding:"9px 14px", fontSize:11, color:T.textMuted, fontFamily:"monospace" }}>{c.receipt_no||"—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </Card>
-  );
+  )}
+
+  {tab==="notes"&&(
+    <Card>
+      <NotesPanel memberId={memberId} currentUser={currentUser} allNotes={allNotes} onNotesChange={onNotesChange} />
+    </Card>
+  )}
+</div>
+```
+
+);
 }
 
-/* ================= MAIN ================= */
-function App(){
-  const [user,setUser]=useState(null);
-  const [page,setPage]=useState("dashboard");
-  const [collapsed,setCollapsed]=useState(false);
-  const [mobileOpen,setMobileOpen]=useState(false);
-  const [notes,setNotes]=useState(SEED_NOTES);
+/* ═══════════════════════════════════════════════════════════════
+CONTRIBUTIONS LEDGER
+═══════════════════════════════════════════════════════════════ */
+function ContribLedger() {
+const [fPeriod, setFPeriod] = useState(””);
+const [fStatus, setFStatus] = useState(””);
+const [search, setSearch] = useState(””);
 
-  const width = useWindowWidth();
-  const isMobile = width < 768;
+const rows = useMemo(()=>CONTRIBUTIONS.filter(c=>{
+const m=getMemberById(c.member_id);
+const q=search.toLowerCase();
+return(!q||m?.name.toLowerCase().includes(q))&&(!fPeriod||c.period===fPeriod)&&(!fStatus||c.status===fStatus);
+}),[search,fPeriod,fStatus]);
 
-  if(!user) return <Login onLogin={setUser}/>;
+const due=rows.reduce((a,c)=>a+c.amount_due,0);
+const paid=rows.reduce((a,c)=>a+c.amount_paid,0);
 
-  return(
-    <div style={{display:"flex"}}>
-      <Sidebar
-        collapsed={collapsed}
-        toggle={()=>setCollapsed(p=>!p)}
-        isMobile={isMobile}
-        mobileOpen={mobileOpen}
-        onClose={()=>setMobileOpen(false)}
-        page={page}
-        setPage={setPage}
-      />
-
-      <div style={{
-        marginLeft:isMobile?0:(collapsed?70:220),
-        width:"100%"
-      }}>
-        <div style={{padding:10,background:"#fff",borderBottom:"1px solid #ddd"}}>
-          {isMobile && <Btn onClick={()=>setMobileOpen(p=>!p)}>☰</Btn>}
-          <Btn onClick={()=>setUser(null)}>Logout</Btn>
-        </div>
-
-        <div style={{padding:20}}>
-          {page==="dashboard" && <h2>Dashboard</h2>}
-
-          {page==="members" && MEMBERS.map(m=>(
-            <Card key={m.id}>
-              <h3>{m.name}</h3>
-              <NotesPanel
-                memberId={m.id}
-                currentUser={user}
-                notes={notes}
-                setNotes={setNotes}
-              />
-            </Card>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+return (
+<div>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(3,1fr)”, gap:14, marginBottom:20 }}>
+<KPICard label=“Total Due” value={`$${due.toLocaleString()}`} sub=“Filtered” icon=“📄” />
+<KPICard label=“Total Collected” value={`$${paid.toLocaleString()}`} sub=“Filtered” accent icon=“✅” />
+<KPICard label=“Outstanding” value={`$${(due-paid).toLocaleString()}`} sub=“Filtered” danger={due-paid>0} icon=“⚠️” />
+</div>
+<Card style={{ marginBottom:16 }} pad=“14px 16px”>
+<div style={{ display:“flex”, gap:10, flexWrap:“wrap” }}>
+<Input value={search} onChange={setSearch} placeholder=“Search member name…” style={{ maxWidth:200 }} />
+<Sel value={fPeriod} onChange={setFPeriod}>
+<option value="">All Periods</option>
+{PERIODS.map(p=><option key={p} value={p}>{p}</option>)}
+</Sel>
+<Sel value={fStatus} onChange={setFStatus}>
+<option value="">All Statuses</option>
+{[“paid”,“partial”,“overdue”,“waived”].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+</Sel>
+</div>
+</Card>
+<Card pad="0">
+<div style={{ padding:“12px 16px”, borderBottom:`1px solid ${T.border}` }}>
+<span style={{ fontSize:12, color:T.textMuted }}>{rows.length} records</span>
+</div>
+<div style={{ overflowX:“auto” }}>
+<table style={{ width:“100%”, borderCollapse:“collapse”, fontSize:12 }}>
+<thead>
+<tr style={{ background:T.surfaceAlt }}>
+{[“Member”,“Period”,“Due”,“Paid”,“Balance”,“Status”,“Receipt”].map(h=>(
+<th key={h} style={{ padding:“9px 14px”, textAlign:“left”, fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.05em”, borderBottom:`1px solid ${T.border}`, whiteSpace:“nowrap” }}>{h}</th>
+))}
+</tr>
+</thead>
+<tbody>
+{rows.map((c,i)=>{
+const m=getMemberById(c.member_id);
+const bal=c.amount_due-c.amount_paid;
+return (
+<tr key={c.id} style={{ borderBottom:`1px solid ${T.border}`, background:i%2===0?T.surface:T.surfaceAlt+“50” }}>
+<td style={{ padding:“8px 14px” }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8 }}>
+<Avatar name={m?.name||”?”} size={22} />
+<span style={{ fontWeight:500, color:T.text }}>{m?.name}</span>
+</div>
+</td>
+<td style={{ padding:“8px 14px”, color:T.textSub, fontFamily:“monospace”, fontSize:11 }}>{c.period}</td>
+<td style={{ padding:“8px 14px”, fontFamily:“monospace” }}>${c.amount_due.toLocaleString()}</td>
+<td style={{ padding:“8px 14px”, fontFamily:“monospace”, color:c.amount_paid>0?T.success:T.textMuted }}>${c.amount_paid.toLocaleString()}</td>
+<td style={{ padding:“8px 14px”, fontFamily:“monospace”, color:bal>0?T.danger:T.textMuted }}>{bal>0?`$${bal.toLocaleString()}`:”—”}</td>
+<td style={{ padding:“8px 14px” }}><StatusBadge status={c.status} /></td>
+<td style={{ padding:“8px 14px”, fontSize:10, color:T.textMuted, fontFamily:“monospace” }}>{c.receipt_no||”—”}</td>
+</tr>
+);
+})}
+</tbody>
+</table>
+</div>
+</Card>
+</div>
+);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+/* ═══════════════════════════════════════════════════════════════
+SURVEYS EXEC
+═══════════════════════════════════════════════════════════════ */
+function SurveysExec() {
+const [sel, setSel] = useState(null);
+const survey = SURVEYS.find(s=>s.id===sel);
+if (survey) {
+const rc=survey.responses.length;
+const el=MEMBERS.filter(m=>m.status===“active”).length;
+return (
+<div>
+<Btn sz=“sm” v=“ghost” onClick={()=>setSel(null)} style={{ marginBottom:16, color:T.textSub }}>← Back to Surveys</Btn>
+<Card style={{ marginBottom:16 }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:12, flexWrap:“wrap” }}>
+<div>
+<h2 style={{ margin:“0 0 6px”, fontSize:16, fontWeight:800, color:T.text }}>{survey.title}</h2>
+<div style={{ fontSize:12, color:T.textMuted }}>Created {survey.created_at} · Closes {survey.closes_at}</div>
+</div>
+<StatusBadge status={survey.status===“active”?“active_survey”:“closed”} label={survey.status} />
+</div>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(3,1fr)”, gap:12, marginTop:16 }}>
+<KPICard label=“Responses” value={rc} sub={`of ${el} active members`} />
+<KPICard label=“Response Rate” value={`${Math.round((rc/el)*100)}%`} accent={rc/el>0.5} danger={rc/el<0.2} />
+<KPICard label="Questions" value={survey.questions.length} />
+</div>
+</Card>
+<Card pad="0">
+<div style={{ padding:“14px 16px”, borderBottom:`1px solid ${T.border}` }}>
+<h3 style={{ margin:0, fontSize:13, fontWeight:700, color:T.text }}>Responses ({rc})</h3>
+</div>
+{rc===0
+? <Empty icon="📭" title="No responses yet" desc="Responses appear here as members submit." />
+: survey.responses.map(r=>{
+const m=getMemberById(r.member_id);
+return (
+<div key={r.member_id} style={{ padding:“14px 16px”, borderBottom:`1px solid ${T.border}` }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10, marginBottom:10 }}>
+<Avatar name={m?.name||”?”} size={26} />
+<div>
+<div style={{ fontSize:13, fontWeight:600, color:T.text }}>{m?.name}</div>
+<div style={{ fontSize:10, color:T.textMuted }}>Submitted {r.submitted_at}</div>
+</div>
+</div>
+{survey.questions.map(q=>(
+<div key={q.id} style={{ marginBottom:6, paddingLeft:36 }}>
+<span style={{ fontSize:11, color:T.textSub, fontWeight:500 }}>{q.text} </span>
+<span style={{ fontSize:11, color:T.text, fontWeight:600 }}>{q.type===“boolean”?(r.answers[q.id]?“Yes”:“No”):String(r.answers[q.id]||”—”)}</span>
+</div>
+))}
+</div>
+);
+})
+}
+</Card>
+</div>
+);
+}
+return (
+<div>
+<SectionHdr title=“Surveys & Feedback” sub=“Manage member surveys and review responses” action={<Btn sz="sm">+ New Survey</Btn>} />
+{SURVEYS.map(s=>{
+const rc=s.responses.length; const el=MEMBERS.filter(m=>m.status===“active”).length;
+return (
+<Card key={s.id} style={{ marginBottom:14 }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:12 }}>
+<div style={{ flex:1 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:6 }}>
+<h3 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text }}>{s.title}</h3>
+<StatusBadge status={s.status===“active”?“active_survey”:“closed”} label={s.status} />
+</div>
+<div style={{ fontSize:11, color:T.textMuted, marginBottom:10 }}>{s.questions.length} questions · Closes {s.closes_at}</div>
+<div style={{ display:“flex”, gap:10 }}><Tag>{rc} responses</Tag><Tag>{Math.round((rc/el)*100)}% rate</Tag></div>
+</div>
+<Btn sz=“sm” v=“secondary” onClick={()=>setSel(s.id)}>View Results</Btn>
+</div>
+</Card>
+);
+})}
+</div>
+);
+}
 
-</script>
-</body>
-</html>
+/* ═══════════════════════════════════════════════════════════════
+ANNOUNCEMENTS
+═══════════════════════════════════════════════════════════════ */
+function Announcements({ isExec=false }) {
+const [open, setOpen] = useState(null);
+return (
+<div>
+<SectionHdr title=“Notices & Announcements” sub={isExec?“Manage notices posted to members”:“Official communications from the union executive”} action={isExec?<Btn sz="sm">+ Post Notice</Btn>:null} />
+{ANNOUNCEMENTS.map(a=>(
+<Card key={a.id} style={{ marginBottom:12, borderLeft:a.pinned?`3px solid ${T.accent}`:`1px solid ${T.border}` }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:12 }}>
+<div style={{ flex:1 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:4, flexWrap:“wrap” }}>
+{a.pinned&&<Tag>📌 Pinned</Tag>}
+<StatusBadge status={a.priority} label={a.priority+” priority”} />
+</div>
+<h3 style={{ margin:“4px 0 4px”, fontSize:14, fontWeight:700, color:T.text }}>{a.title}</h3>
+<div style={{ fontSize:11, color:T.textMuted, marginBottom:8 }}>{a.author} · {a.created_at}</div>
+<p style={{ margin:0, fontSize:12, color:T.textSub, lineHeight:1.6, display:open===a.id?“block”:”-webkit-box”, WebkitLineClamp:open===a.id?“none”:2, WebkitBoxOrient:“vertical”, overflow:“hidden” }}>
+{a.body}
+</p>
+</div>
+</div>
+<button onClick={()=>setOpen(open===a.id?null:a.id)} style={{ marginTop:8, background:“none”, border:“none”, fontSize:11, color:T.accent, cursor:“pointer”, padding:0, fontFamily:“inherit” }}>
+{open===a.id?“Show less ↑”:“Read more ↓”}
+</button>
+</Card>
+))}
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+REPORTS
+═══════════════════════════════════════════════════════════════ */
+function Reports() {
+const due=CONTRIBUTIONS.reduce((a,c)=>a+c.amount_due,0);
+const paid=CONTRIBUTIONS.reduce((a,c)=>a+c.amount_paid,0);
+const rate=Math.round((paid/due)*100);
+const byStatus=[“paid”,“partial”,“overdue”,“waived”].map(st=>({ status:st, count:CONTRIBUTIONS.filter(c=>c.status===st).length, amount:CONTRIBUTIONS.filter(c=>c.status===st).reduce((a,c)=>a+c.amount_paid,0) }));
+const bySt=STATIONS.map(st=>{
+const ids=MEMBERS.filter(m=>m.station===st.id).map(m=>m.id);
+const cs=CONTRIBUTIONS.filter(c=>ids.includes(c.member_id));
+const p=cs.reduce((a,c)=>a+c.amount_paid,0); const d=cs.reduce((a,c)=>a+c.amount_due,0);
+return { station:st, paid:p, due:d, rate:d>0?Math.round((p/d)*100):0 };
+});
+return (
+<div>
+<SectionHdr title="Reports" sub="Financial and membership summary reports" />
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(160px,1fr))”, gap:14, marginBottom:20 }}>
+<KPICard label=“Total Assessed” value={`$${due.toLocaleString()}`} sub=“All periods” />
+<KPICard label=“Total Collected” value={`$${paid.toLocaleString()}`} sub=“All periods” accent />
+<KPICard label=“Collection Rate” value={`${rate}%`} accent={rate>80} danger={rate<60} />
+<KPICard label=“Outstanding” value={`$${(due-paid).toLocaleString()}`} sub=“JMD” danger />
+</div>
+<div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:18, marginBottom:18 }}>
+<Card>
+<SectionHdr title="Contributions by Status" />
+<table style={{ width:“100%”, borderCollapse:“collapse”, fontSize:12 }}>
+<thead><tr>{[“Status”,“Records”,“Collected”].map(h=><th key={h} style={{ padding:“8px 0”, textAlign:“left”, fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.05em”, borderBottom:`1px solid ${T.border}` }}>{h}</th>)}</tr></thead>
+<tbody>{byStatus.map(r=><tr key={r.status} style={{ borderBottom:`1px solid ${T.border}` }}><td style={{ padding:“9px 0” }}><StatusBadge status={r.status} /></td><td style={{ padding:“9px 0”, color:T.text, fontWeight:600 }}>{r.count}</td><td style={{ padding:“9px 0”, fontFamily:“monospace” }}>${r.amount.toLocaleString()}</td></tr>)}</tbody>
+</table>
+</Card>
+<Card>
+<SectionHdr title="Collection by Station" />
+{bySt.map(r=>(
+<div key={r.station.id} style={{ marginBottom:14 }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, marginBottom:4 }}>
+<span style={{ fontSize:12, fontWeight:600, color:T.text }}>{r.station.name.replace(” Fire Station”,””)}</span>
+<span style={{ fontSize:12, color:T.textSub, fontFamily:“monospace” }}>{r.rate}%</span>
+</div>
+<div style={{ height:6, background:T.border, borderRadius:3, overflow:“hidden” }}>
+<div style={{ height:“100%”, borderRadius:3, width:`${r.rate}%`, background:r.rate>80?T.success:r.rate>50?T.warning:T.danger }} />
+</div>
+<div style={{ fontSize:10, color:T.textMuted, marginTop:2 }}>${r.paid.toLocaleString()} / ${r.due.toLocaleString()}</div>
+</div>
+))}
+</Card>
+</div>
+<Card>
+<SectionHdr title="Collection by Quarter" />
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(120px,1fr))”, gap:10 }}>
+{PERIODS.map(p=>{
+const cs=CONTRIBUTIONS.filter(c=>c.period===p);
+const pd=cs.reduce((a,c)=>a+c.amount_paid,0); const dd=cs.reduce((a,c)=>a+c.amount_due,0);
+const rt=Math.round((pd/dd)*100);
+return (
+<div key={p} style={{ padding:12, background:T.surfaceAlt, borderRadius:T.radius, border:`1px solid ${T.border}` }}>
+<div style={{ fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, marginBottom:4 }}>{p}</div>
+<div style={{ fontSize:18, fontWeight:800, color:T.text, fontFamily:”‘DM Mono’,monospace” }}>{rt}%</div>
+<div style={{ fontSize:10, color:T.textMuted }}>${pd.toLocaleString()} collected</div>
+</div>
+);
+})}
+</div>
+</Card>
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MEMBER SELF-SERVICE
+═══════════════════════════════════════════════════════════════ */
+function MemberDash({ memberId, onNav }) {
+const m=getMemberById(memberId); if(!m) return null;
+const contribs=getMemberContribs(memberId);
+const owing=arrearsSummary(memberId);
+const standing=memberStanding(memberId);
+const paid=contribs.filter(c=>c.status===“paid”).length;
+const pending=SURVEYS.filter(s=>s.status===“active”&&!s.responses.find(r=>r.member_id===memberId));
+return (
+<div>
+<Card style={{ marginBottom:18, background:“linear-gradient(135deg,#141412 0%,#1e293b 100%)”, border:“none” }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, flexWrap:“wrap”, gap:12 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:14 }}>
+<Avatar name={m.name} size={48} />
+<div>
+<div style={{ fontSize:11, color:”#94a3b8”, marginBottom:2 }}>Welcome back</div>
+<div style={{ fontSize:18, fontWeight:800, color:”#fff” }}>{m.name}</div>
+<div style={{ fontSize:12, color:”#94a3b8” }}>{m.rank} · {getStationById(m.station)?.name}</div>
+</div>
+</div>
+<div style={{ textAlign:“right” }}>
+<StatusBadge status={standing} label={standing===“good-standing”?“Good Standing”:standing===“minor-arrears”?“Minor Arrears”:“In Arrears”} />
+<div style={{ fontSize:10, color:”#64748b”, marginTop:4 }}>Member since {m.join_date}</div>
+</div>
+</div>
+</Card>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(auto-fit,minmax(150px,1fr))”, gap:14, marginBottom:20 }}>
+<KPICard label=“Quarters Paid” value={`${paid}/${PERIODS.length}`} sub=“Contribution record” />
+<KPICard label=“Outstanding” value={`$${owing.toLocaleString()}`} sub=“JMD owing” danger={owing>0} />
+<KPICard label="Pending Surveys" value={pending.length} sub="Awaiting your response" accent={pending.length>0} />
+</div>
+{owing>0&&(
+<Card style={{ marginBottom:16, borderLeft:`3px solid ${T.danger}`, background:T.dangerLight }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<div>
+<div style={{ fontSize:13, fontWeight:700, color:T.danger }}>⚠️ Outstanding Contributions</div>
+<div style={{ fontSize:12, color:T.textSub, marginTop:2 }}>You have ${owing.toLocaleString()} JMD in unpaid contributions. Contact the Branch Secretary to arrange payment.</div>
+</div>
+<Btn sz=“sm” v=“secondary” onClick={()=>onNav(“my-contributions”)}>View Details</Btn>
+</div>
+</Card>
+)}
+{pending.length>0&&(
+<Card style={{ marginBottom:16, borderLeft:`3px solid ${T.accent}` }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<div>
+<div style={{ fontSize:13, fontWeight:700, color:T.accent }}>📋 Survey Pending</div>
+<div style={{ fontSize:12, color:T.textSub, marginTop:2 }}>{pending[0].title} — closes {pending[0].closes_at}</div>
+</div>
+<Btn sz=“sm” onClick={()=>onNav(“member-surveys”)}>Take Survey</Btn>
+</div>
+</Card>
+)}
+<Card>
+<SectionHdr title=“Recent Contributions” action={<Btn sz=“sm” v=“secondary” onClick={()=>onNav(“my-contributions”)}>View All</Btn>} />
+<table style={{ width:“100%”, borderCollapse:“collapse”, fontSize:13 }}>
+<thead><tr>{[“Period”,“Due”,“Paid”,“Status”].map(h=><th key={h} style={{ padding:“8px 0”, textAlign:“left”, fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.05em”, borderBottom:`1px solid ${T.border}` }}>{h}</th>)}</tr></thead>
+<tbody>
+{contribs.slice(-4).reverse().map(c=>(
+<tr key={c.id} style={{ borderBottom:`1px solid ${T.border}` }}>
+<td style={{ padding:“9px 0”, fontWeight:600, color:T.text }}>{c.period}</td>
+<td style={{ padding:“9px 0”, fontFamily:“monospace” }}>${c.amount_due.toLocaleString()}</td>
+<td style={{ padding:“9px 0”, fontFamily:“monospace”, color:c.amount_paid>0?T.success:T.textMuted }}>${c.amount_paid.toLocaleString()}</td>
+<td style={{ padding:“9px 0” }}><StatusBadge status={c.status} /></td>
+</tr>
+))}
+</tbody>
+</table>
+</Card>
+</div>
+);
+}
+
+function MyProfile({ memberId }) {
+const m=getMemberById(memberId); if(!m) return null;
+const st=getStationById(m.station);
+const standing=memberStanding(m.id);
+return (
+<div>
+<Card style={{ marginBottom:16 }}>
+<div style={{ display:“flex”, alignItems:“flex-start”, gap:18, flexWrap:“wrap” }}>
+<Avatar name={m.name} size={60} />
+<div style={{ flex:1 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:10, flexWrap:“wrap”, marginBottom:6 }}>
+<h2 style={{ margin:0, fontSize:18, fontWeight:800, color:T.text }}>{m.name}</h2>
+<StatusBadge status={standing} label={standing===“good-standing”?“Good Standing”:“In Arrears”} />
+</div>
+<div style={{ fontSize:13, color:T.textSub, marginBottom:10 }}>{m.rank} · {st?.name}</div>
+<div style={{ display:“flex”, gap:8, flexWrap:“wrap” }}><Tag>{m.employee_id}</Tag><Tag>NIS: {m.nis}</Tag><Tag>{m.branch} Branch</Tag></div>
+</div>
+</div>
+</Card>
+<div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:16 }}>
+<Card>
+<h3 style={{ margin:“0 0 14px”, fontSize:13, fontWeight:700, color:T.text }}>Personal Information</h3>
+{[[“Full Name”,m.name],[“Email”,m.email],[“Phone”,m.phone],[“Join Date”,m.join_date],[“NIS Number”,m.nis]].map(([l,v])=>(
+<div key={l} style={{ display:“flex”, justifyContent:“space-between”, padding:“8px 0”, borderBottom:`1px solid ${T.border}`, fontSize:12 }}>
+<span style={{ color:T.textSub }}>{l}</span><span style={{ color:T.text, fontWeight:500 }}>{v}</span>
+</div>
+))}
+</Card>
+<Card>
+<h3 style={{ margin:“0 0 14px”, fontSize:13, fontWeight:700, color:T.text }}>Service Information</h3>
+{[[“Rank”,m.rank],[“Station”,st?.name],[“Branch”,m.branch],[“Employee ID”,m.employee_id],[“Status”,m.status.charAt(0).toUpperCase()+m.status.slice(1)]].map(([l,v])=>(
+<div key={l} style={{ display:“flex”, justifyContent:“space-between”, padding:“8px 0”, borderBottom:`1px solid ${T.border}`, fontSize:12 }}>
+<span style={{ color:T.textSub }}>{l}</span><span style={{ color:T.text, fontWeight:500 }}>{v}</span>
+</div>
+))}
+</Card>
+</div>
+<Card style={{ marginTop:16 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, padding:“10px 12px”, background:T.surfaceAlt, borderRadius:T.radius, fontSize:11, color:T.textSub }}>
+🔒 To update your personal information, contact the Branch Secretary or station administration.
+</div>
+</Card>
+</div>
+);
+}
+
+function MyContributions({ memberId, onBack }) {
+const m=getMemberById(memberId); if(!m) return null;
+const contribs=getMemberContribs(memberId);
+const owing=arrearsSummary(memberId);
+const paid=contribs.filter(c=>c.status===“paid”).length;
+return (
+<div>
+<div style={{ marginBottom:16 }}><Btn sz=“sm” v=“ghost” onClick={onBack} style={{ color:T.textSub }}>← Back to Dashboard</Btn></div>
+<div style={{ display:“grid”, gridTemplateColumns:“repeat(3,1fr)”, gap:14, marginBottom:20 }}>
+<KPICard label=“Quarters Paid” value={`${paid}/${PERIODS.length}`} />
+<KPICard label=“Outstanding” value={`$${owing.toLocaleString()}`} danger={owing>0} />
+<KPICard label=“Total Paid” value={`$${contribs.reduce((a,c)=>a+c.amount_paid,0).toLocaleString()}`} accent />
+</div>
+<Card pad="0">
+<div style={{ padding:“14px 16px”, borderBottom:`1px solid ${T.border}` }}>
+<h3 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text }}>Full Contribution History</h3>
+</div>
+<table style={{ width:“100%”, borderCollapse:“collapse”, fontSize:13 }}>
+<thead><tr style={{ background:T.surfaceAlt }}>{[“Period”,“Due”,“Paid”,“Balance”,“Status”,“Receipt”].map(h=><th key={h} style={{ padding:“9px 14px”, textAlign:“left”, fontSize:10, fontWeight:700, color:T.textSub, textTransform:“uppercase”, letterSpacing:“0.05em”, borderBottom:`1px solid ${T.border}` }}>{h}</th>)}</tr></thead>
+<tbody>
+{contribs.map(c=>{
+const bal=c.amount_due-c.amount_paid;
+return (
+<tr key={c.id} style={{ borderBottom:`1px solid ${T.border}` }}>
+<td style={{ padding:“9px 14px”, fontWeight:600, color:T.text }}>{c.period}</td>
+<td style={{ padding:“9px 14px”, fontFamily:“monospace” }}>${c.amount_due.toLocaleString()}</td>
+<td style={{ padding:“9px 14px”, fontFamily:“monospace”, color:c.amount_paid>0?T.success:T.textMuted }}>${c.amount_paid.toLocaleString()}</td>
+<td style={{ padding:“9px 14px”, fontFamily:“monospace”, color:bal>0?T.danger:T.textMuted }}>{bal>0?`$${bal.toLocaleString()}`:”—”}</td>
+<td style={{ padding:“9px 14px” }}><StatusBadge status={c.status} /></td>
+<td style={{ padding:“9px 14px”, fontSize:11, color:T.textMuted, fontFamily:“monospace” }}>{c.receipt_no||”—”}</td>
+</tr>
+);
+})}
+</tbody>
+</table>
+</Card>
+</div>
+);
+}
+
+function MemberSurveys({ memberId }) {
+const [active, setActive] = useState(null);
+const [answers, setAnswers] = useState({});
+const [submitted, setSubmitted] = useState({});
+const survey = SURVEYS.find(s=>s.id===active);
+
+function doSubmit() { setSubmitted(p=>({…p,[active]:true})); setActive(null); setAnswers({}); }
+
+if (survey) {
+const done = submitted[survey.id]||survey.responses.find(r=>r.member_id===memberId);
+return (
+<div>
+<Btn sz=“sm” v=“ghost” onClick={()=>setActive(null)} style={{ marginBottom:16, color:T.textSub }}>← Back to Surveys</Btn>
+<Card>
+<h2 style={{ margin:“0 0 4px”, fontSize:16, fontWeight:800, color:T.text }}>{survey.title}</h2>
+<div style={{ fontSize:11, color:T.textMuted, marginBottom:20 }}>Closes {survey.closes_at}</div>
+{done
+? <div style={{ textAlign:“center”, padding:32, color:T.success }}><div style={{ fontSize:32, marginBottom:10 }}>✅</div><div style={{ fontWeight:700, fontSize:14 }}>You have already completed this survey.</div></div>
+: <>
+{survey.questions.map((q,qi)=>(
+<div key={q.id} style={{ marginBottom:20, paddingBottom:20, borderBottom:`1px solid ${T.border}` }}>
+<div style={{ fontSize:13, fontWeight:600, color:T.text, marginBottom:10 }}><span style={{ color:T.textMuted, marginRight:8 }}>Q{qi+1}.</span>{q.text}</div>
+{q.type===“scale”&&<div style={{ display:“flex”, gap:8 }}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setAnswers(p=>({…p,[q.id]:n}))} style={{ width:36, height:36, borderRadius:“50%”, border:`2px solid ${answers[q.id]===n?T.accent:T.border}`, background:answers[q.id]===n?T.accent:T.surface, color:answers[q.id]===n?”#fff”:T.text, fontSize:13, fontWeight:700, cursor:“pointer” }}>{n}</button>)}<span style={{ fontSize:11, color:T.textMuted, alignSelf:“center”, marginLeft:4 }}>1=Poor · 5=Excellent</span></div>}
+{q.type===“boolean”&&<div style={{ display:“flex”, gap:10 }}>{[“Yes”,“No”].map(o=><button key={o} onClick={()=>setAnswers(p=>({…p,[q.id]:o===“Yes”}))} style={{ padding:“6px 18px”, borderRadius:T.radius, border:`2px solid ${answers[q.id]===(o==="Yes")?T.accent:T.border}`, background:answers[q.id]===(o===“Yes”)?T.accentLight:T.surface, color:answers[q.id]===(o===“Yes”)?T.accent:T.text, fontSize:12, fontWeight:600, cursor:“pointer” }}>{o}</button>)}</div>}
+{q.type===“choice”&&<div style={{ display:“flex”, gap:8, flexWrap:“wrap” }}>{q.options.map(o=><button key={o} onClick={()=>setAnswers(p=>({…p,[q.id]:o}))} style={{ padding:“6px 14px”, borderRadius:T.radius, border:`2px solid ${answers[q.id]===o?T.accent:T.border}`, background:answers[q.id]===o?T.accentLight:T.surface, color:answers[q.id]===o?T.accent:T.text, fontSize:12, fontWeight:600, cursor:“pointer” }}>{o}</button>)}</div>}
+{q.type===“text”&&<Textarea value={answers[q.id]||””} onChange={v=>setAnswers(p=>({…p,[q.id]:v}))} placeholder=“Your response…” rows={3} />}
+</div>
+))}
+<Btn onClick={doSubmit}>Submit Survey</Btn>
+</>
+}
+</Card>
+</div>
+);
+}
+return (
+<div>
+<SectionHdr title="Surveys & Feedback" sub="Participate in member surveys" />
+{SURVEYS.map(s=>{
+const done=submitted[s.id]||!!s.responses.find(r=>r.member_id===memberId);
+return (
+<Card key={s.id} style={{ marginBottom:12 }}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, gap:12, flexWrap:“wrap” }}>
+<div>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:4 }}>
+<h3 style={{ margin:0, fontSize:14, fontWeight:700, color:T.text }}>{s.title}</h3>
+<StatusBadge status={s.status===“active”?“active_survey”:“closed”} label={s.status} />
+{done&&<StatusBadge status="paid" label="Completed" />}
+</div>
+<div style={{ fontSize:11, color:T.textMuted }}>{s.questions.length} questions · Closes {s.closes_at}</div>
+</div>
+{s.status===“active”&&!done&&<Btn sz=“sm” onClick={()=>setActive(s.id)}>Take Survey</Btn>}
+{done&&<Tag>✓ Submitted</Tag>}
+</div>
+</Card>
+);
+})}
+</div>
+);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+MAIN APP
+═══════════════════════════════════════════════════════════════ */
+const PAGE_TITLES = {
+“exec-dashboard”:“Executive Dashboard”,“members”:“Members Directory”,
+“contributions”:“Contributions Ledger”,“reports”:“Reports”,
+“surveys”:“Surveys”,“announcements”:“Announcements”,
+“member-profile”:“Member Profile”,“member-dashboard”:“My Dashboard”,
+“my-profile”:“My Profile”,“my-contributions”:“Contributions”,
+“member-surveys”:“Surveys”,“member-announcements”:“Notices”,
+};
+
+export default function App() {
+const [currentUser, setCurrentUser] = useState(null);
+const [page, setPage] = useState(null);
+const [selId, setSelId] = useState(null);
+const [mobileOpen, setMobileOpen] = useState(false);
+const [allNotes, setAllNotes] = useState(SEED_NOTES);
+
+const width = useWindowWidth();
+const isMobile = width < 768;
+
+useEffect(()=>{
+const link=document.createElement(“link”);
+link.rel=“stylesheet”;
+link.href=“https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap”;
+document.head.appendChild(link);
+document.body.style.cssText=“margin:0;padding:0;font-family:‘DM Sans’,sans-serif;background:#f7f6f4;”;
+const s=document.createElement(“style”);
+s.textContent=”*,*::before,*::after{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d1cfc9;border-radius:3px}”;
+document.head.appendChild(s);
+},[]);
+
+// Auto-close mobile nav when switching to desktop
+useEffect(()=>{ if(!isMobile) setMobileOpen(false); },[isMobile]);
+
+function login(u) { setCurrentUser(u); setPage(u.role===“exec”?“exec-dashboard”:“member-dashboard”); }
+function logout() { setCurrentUser(null); setPage(null); setMobileOpen(false); }
+
+if (!currentUser) return <Login onLogin={login} />;
+
+const role=currentUser.role;
+const memberId=currentUser.member_id;
+
+function renderPage() {
+switch(page) {
+case “exec-dashboard”:       return <ExecDashboard onNav={setPage} allNotes={allNotes} />;
+case “members”:              return <MembersDir onNav={setPage} setSelId={setSelId} allNotes={allNotes} />;
+case “member-profile”:       return <MemberProfile memberId={selId} onBack={()=>setPage(“members”)} allNotes={allNotes} onNotesChange={setAllNotes} currentUser={currentUser} />;
+case “contributions”:        return <ContribLedger />;
+case “reports”:              return <Reports />;
+case “surveys”:              return <SurveysExec />;
+case “announcements”:        return <Announcements isExec />;
+case “member-dashboard”:     return <MemberDash memberId={memberId} onNav={setPage} />;
+case “my-profile”:           return <MyProfile memberId={memberId} />;
+case “my-contributions”:     return <MyContributions memberId={memberId} onBack={()=>setPage(“member-dashboard”)} />;
+case “member-surveys”:       return <MemberSurveys memberId={memberId} />;
+case “member-announcements”: return <Announcements />;
+default:                     return <Empty icon="🔍" title="Page not found" desc="Select a page from the sidebar." />;
+}
+}
+
+return (
+<div style={{ fontFamily:”‘DM Sans’,sans-serif”, minHeight:“100vh”, background:T.bg }}>
+<Sidebar
+role={role} page={page} onNav={setPage}
+currentUser={currentUser} onLogout={logout}
+mobileOpen={mobileOpen} onClose={()=>setMobileOpen(false)}
+isMobile={isMobile}
+/>
+{/* Main content shifts right on desktop; full-width on mobile */}
+<div style={{ marginLeft:isMobile?0:SIDEBAR_W, minHeight:“100vh”, display:“flex”, flexDirection:“column”, transition:“margin-left 0.22s” }}>
+<Topbar title={PAGE_TITLES[page]||“JFB Union”} onMenuToggle={()=>setMobileOpen(p=>!p)} isMobile={isMobile} />
+<main style={{ flex:1, padding:isMobile?“14px”:“20px”, maxWidth:1100, margin:“0 auto”, width:“100%” }}>
+{renderPage()}
+</main>
+</div>
+</div>
+);
+}
